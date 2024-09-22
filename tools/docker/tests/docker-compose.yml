@@ -1,0 +1,61 @@
+name: "tss2-fapi-rs-tests"
+
+services:
+  tests:
+    networks:
+      tss2-fapi-rs-test-net:
+        ipv4_address: 10.0.0.10
+    build:
+      context: ./
+      dockerfile: tests.Dockerfile
+      args:
+        BASE_VERSION: ${BASE_VERSION_TESTS:-r7@sha256:0e5e9fac5b6f74d360ae9c30cebdaedd37d00d2a36e96f64d92e29ca934f0793}
+    volumes:
+      - ../../../:/var/opt/rust/src:ro
+      - log:/var/log/tss2-fapi-rs:rw
+      - reg:/usr/local/cargo/registry:rw
+    tmpfs:
+      - /var/tmp/rust:exec
+    environment:
+      FAPI_RS_TEST_TCTI: "swtpm:host=10.0.0.20,port=2321"
+      FAPI_RS_TEST_NAME: "${TEST_NAME-}"
+      FAPI_RS_TEST_LOOP: "${TEST_LOOP:-5}"
+      RUST_LOG: "${RUST_LOG:-info}"
+      TSS2_LOG: "${TSS2_LOG:-all+none}"
+      SWTPM_CTRL_ADDR: "10.0.0.20"
+      SWTPM_CTRL_PORT: "2322"
+      TEST_KEEP_RUNNING: "${KEEP_RUNNING:-0}"
+      TEST_INCL_IGNORED: "${INCL_IGNORED:-0}"
+    command:
+      - "RSA2048SHA256"
+      - "ECCP256SHA256"
+    depends_on:
+      - swtpm
+
+  swtpm:
+    networks:
+      tss2-fapi-rs-test-net:
+        ipv4_address: 10.0.0.20
+    build:
+      context: ../swtpm
+      dockerfile: swtpm.Dockerfile
+      args:
+        BASE_VERSION: ${BASE_VERSION_SWTPM:-r9@sha256:680397c3d15b73cd30094388fdffec7028725cb9022b7a0b5a1ea60826323296}
+    volumes:
+      - log:/var/log/swtpm:rw
+    tmpfs:
+      - /var/lib/swtpm
+      - /var/lib/swtpm-localca
+    restart: unless-stopped
+    stop_signal: SIGKILL
+
+networks:
+  tss2-fapi-rs-test-net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.0.0.0/24"
+
+volumes:
+  log:
+  reg:

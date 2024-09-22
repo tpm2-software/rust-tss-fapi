@@ -1,0 +1,50 @@
+stages:
+  - check
+  - build
+
+cargo check:
+  stage: check
+  tags:
+    - linux-docker-x64
+  image: rust:latest
+  script:
+    - rustup component add rustfmt
+    - |
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq && \
+      apt-get install -y --no-install-recommends libclang-dev libtss2-dev
+      rm -r /var/lib/apt/lists /var/cache/apt/archives
+    - make format check
+
+cargo doc:
+  stage: build
+  tags:
+    - linux-docker-x64
+  image: rust:latest
+  script:
+    - |
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq && \
+      apt-get install -y --no-install-recommends libclang-dev libtss2-dev
+      rm -r /var/lib/apt/lists /var/cache/apt/archives
+    - make docs
+    - cp -f docs/html/redir.html target/doc/index.html
+  artifacts:
+    paths:
+      - "target/doc"
+
+cargo build:
+  stage: build
+  tags:
+    - linux-docker-x64
+  image: rust:latest
+  script:
+    - |
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq && \
+      apt-get install -y --no-install-recommends libclang-dev libtss2-dev
+      rm -r /var/lib/apt/lists /var/cache/apt/archives
+    - make build
+  artifacts:
+    paths:
+      - "target/release/*.rlib"

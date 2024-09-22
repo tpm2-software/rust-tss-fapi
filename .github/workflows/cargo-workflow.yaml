@@ -1,0 +1,267 @@
+name: "Cargo Workflow"
+on:
+  workflow_call:
+    inputs:
+      TOOLCHAIN_MIN:
+        required: false
+        type: string
+        default: "1.79.0"
+      TOOLCHAIN_MAX:
+        required: false
+        type: string
+        default: "1.81.0"
+      OS_VERS_MIN:
+        required: false
+        type: string
+        default: "22.04"
+      OS_VERS_MAX:
+        required: false
+        type: string
+        default: "24.04"
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+      CARGO_REGISTRY_TOKEN:
+        required: true
+
+jobs:
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Code formatting
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  format:
+    name: cargo fmt
+    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.TOOLCHAIN_MAX }}
+          cache: false
+          components: rustfmt
+      - uses: actions-rust-lang/rustfmt@v1
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Code checks
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  checks:
+    name: cargo check
+    strategy:
+      matrix:
+        platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+    runs-on: ubuntu-${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: make check
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Integeration tests
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  tests:
+    name: cargo test
+    needs: [format, checks]
+    strategy:
+      matrix:
+        platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+        profile: [RSA2048SHA256, ECCP256SHA256]
+    runs-on: ubuntu-${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: |
+          make docker.swtpm DETACH=1
+          make tests RUST_LOG=info TSS2_LOG=all+none FAPI_RS_TEST_PROF=${{ matrix.profile }}
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Code coverage analysis (codecov)
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  codecov:
+    name: codecov
+    needs: [format, checks]
+    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.TOOLCHAIN_MAX }}
+          cache: false
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: |
+          make docker.swtpm DETACH=1
+          make codecov RUST_LOG=info TSS2_LOG=all+none
+      - uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-analysis
+          path: target/llvm-cov/codecov-output.json
+      - uses: codecov/codecov-action@v4
+        with:
+          files: target/llvm-cov/codecov-output.json
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Build binaries
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  build:
+    name: cargo build
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+    runs-on: ubuntu-${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: make build
+      - run: cp -vf README.md LICENSE target/release/
+      - run: |
+          printf "%s\n%s\n%s\n%s\n%s\n" "${GITHUB_REF} @ ${GITHUB_SHA:0:12}" \
+          "$(date -R)" "$(lsb_release -s -d)" "$(rustc --version)" \
+          "$(pkg-config --print-provides tss2-fapi)" > target/release/BUILD_INFO
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist.binary.ubuntu-${{ matrix.platform }}-rust-${{ matrix.rust }}
+          path: |
+            target/release/libtss2_fapi_rs.rlib
+            target/release/README.md
+            target/release/LICENSE
+            target/release/BUILD_INFO
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Generate documentation
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  docs:
+    name: cargo doc
+    needs: tests
+    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.TOOLCHAIN_MAX }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: make docs
+      - run: |
+          cp -f docs/html/redir.html target/doc/index.html
+          rm -f target/doc/.lock
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/doc/
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Assemble package into a distributable tarball
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  package:
+    name: cargo package
+    needs: tests
+    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.TOOLCHAIN_MAX }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: make package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist.package
+          path: target/package/**/*.crate
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Deploy GitHub pages
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  pages:
+    name: deploy pages
+    needs: docs
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Release build artifacts on GitHub
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  release:
+    name: release files
+    if: ${{ github.event_name == 'release' }}
+    needs: [build, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist.*
+          path: artifacts
+      - working-directory: artifacts
+        run: |
+          for variant in dist.binary.*; do pushd -- ${variant}; \
+          tar -czvf ../tss2-fapi-rs-${{ github.ref_name }}-${variant:12}.tar.gz *; \
+          popd; done; mv -vf dist.package/*.crate ./; rm -r */
+      - uses: Roang-zero1/github-upload-release-artifacts-action@v2
+        with:
+          args: artifacts/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Publish new release to Creates.io
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  publish:
+    name: cargo publish
+    if: ${{ github.event_name == 'release' }}
+    needs: build
+    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ inputs.TOOLCHAIN_MAX }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+      - run: make publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+

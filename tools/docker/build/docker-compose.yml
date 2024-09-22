@@ -1,0 +1,19 @@
+name: "tss2-fapi-rs-build"
+
+services:
+  build:
+    build:
+      context: ./
+      dockerfile: build.Dockerfile
+      args:
+        BASE_VERSION: ${BASE_VERSION_BUILD:-r7@sha256:0e5e9fac5b6f74d360ae9c30cebdaedd37d00d2a36e96f64d92e29ca934f0793}
+    volumes:
+      - ../../../:/var/opt/rust/src:ro
+      - out:/var/tmp/rust:rw
+      - reg:/usr/local/cargo/registry:rw
+    command:
+      ${CARGO_CMD:-rebuild --release}
+
+volumes:
+  out:
+  reg:

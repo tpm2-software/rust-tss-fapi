@@ -1,0 +1,22 @@
+name: "tss2-fapi-rs-swtpm"
+
+services:
+  swtpm:
+    build:
+      context: ./
+      dockerfile: swtpm.Dockerfile
+      args:
+        BASE_VERSION: ${BASE_VERSION_SWTPM:-r9@sha256:680397c3d15b73cd30094388fdffec7028725cb9022b7a0b5a1ea60826323296}
+    volumes:
+      - log:/var/log/swtpm:rw
+    tmpfs:
+      - /var/lib/swtpm
+      - /var/lib/swtpm-localca
+    ports:
+      - "2321:2321"
+      - "2322:2322"
+    restart: unless-stopped
+    stop_signal: SIGKILL
+
+volumes:
+  log:

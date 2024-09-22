@@ -1,0 +1,10 @@
+{
+  "profile_name": "P_{{PROF_CFG}}",
+  "profile_dir": "{{PROF_DIR}}",
+  "user_dir": "{{USER_DIR}}",
+  "system_dir": "{{SYST_DIR}}",
+  "tcti": "{{TCTI_CFG}}",
+  "system_pcrs": [],
+  "log_dir": "{{LOGS_DIR}}",
+  "ek_cert_less": "yes"
+}
