@@ -7,7 +7,7 @@
 use pkg_config::{Config, Error};
 use std::{
     env,
-    fs::{self, File},
+    fs::File,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -29,21 +29,6 @@ fn main() {
 
     // Detect the native TSS 2.0 FAPI library location
     let tss2_fapi = detect_tss2_library();
-
-    // Workaround for Docs.rs build (TODO: remove this when Docs.rs gets fixed!)
-    if tss2_fapi.is_err() && std::env::var("DOCS_RS").map_or(false, |value| value.eq("1")) {
-        eprintln!("NOTE: Docs.rs workaround enabled!");
-        let src_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("external")
-            .join("docs.rs")
-            .join("dependencies")
-            .join("tpm2-tss");
-        for file_name in ["tss2_fapi_bindings.rs", "tss2_fapi_versinfo.rs"] {
-            fs::copy(src_path.join(file_name), out_path.join(file_name))
-                .expect("Failed to copy required file!");
-        }
-        return; /* pretend we succeeded */
-    }
 
     // Unwrap pkg-config result
     let tss2_fapi = tss2_fapi.expect("pkg_config: Required library \"tss2-fapi\" not found!");

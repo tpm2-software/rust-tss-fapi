@@ -1,6 +1,6 @@
 [package]
 name = "tss2-fapi-rs"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
 license = "BSD-3-Clause"
@@ -10,12 +10,12 @@ repository = "https://github.com/danieltrick/tss2-fapi-rs/"
 
 [dependencies]
 json = "0.12.4"
-libc = "0.2.155"
+libc = "0.2.159"
 log = "0.4.22"
 
 [build-dependencies]
 bindgen = "0.70.1"
-pkg-config = "0.3.30"
+pkg-config = "0.3.31"
 
 [dev-dependencies]
 const-random = "0.1.18"
