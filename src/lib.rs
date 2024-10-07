@@ -113,16 +113,6 @@
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to build the `tss2-fapi-rs` library!
 //!
-//! #### Example code
-//!
-//! Some examples demonstrating how to use the `tss2-fapi-rs` library are provided in the **`examples`** sub-directory.
-//!
-//! In order to build and run an example, simply run the following command in the project root directory:
-//!
-//! ```sh
-//! $ cargo run --example <example_name>
-//! ```
-//!
 //! #### Building with Docker
 //!
 //! Building **`tss2-fapi-rs`** in the fully self-contained [Docker environment](#docker-environment) (see below) has the advantage that the library can be built *without* the need to install any of the prerequisites &ndash; except for Docker and the Compose V2 plug-in &ndash; on the "host" system.
@@ -132,6 +122,33 @@
 //! ```sh
 //! $ make docker.build
 //! ```
+//!
+//! ### Examples
+//!
+//! Some examples demonstrating how to use the `tss2-fapi-rs` library are provided in the **`examples`** sub-directory.
+//!
+//! In order to build and run an example, simply run the following command in the project root directory:
+//!
+//! ```sh
+//! $ cargo run --example <example_name>
+//! ```
+//!
+//! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
+//!
+//! #### Configuration
+//!
+//! An example *FAPI configuration* is provided in the **`examples/data`** sub-directory. It can be applied as follows:
+//!
+//! * Copy the configuration files to the "home" directory:
+//!   ```sh
+//!   $ mkdir ~/my-fapi-config
+//!   $ cp -r examples/data/* ~/my-fapi-config
+//!   ```
+//!
+//! * Run the example with the desired FAPI configuration:
+//!   ```sh
+//!   $ TSS2_FAPICONF=~/my-fapi-config/fapi-config.json cargo run --example [...]
+//!   ```
 //!
 //! ### Prerequisites
 //!

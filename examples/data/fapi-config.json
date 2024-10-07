@@ -1,10 +1,10 @@
 {
   "ek_cert_less": "yes",
-  "log_dir": "/home/john_doe/tss2-fapi-config/logs",
-  "profile_dir": "/home/john_doe/tss2-fapi-config/profiles",
+  "log_dir": "~/my-fapi-config/logs",
+  "profile_dir": "~/my-fapi-config/profiles",
   "profile_name": "P_ECCP256SHA256",
-  "system_dir": "/home/john_doe/tss2-fapi-config/keystore/system",
+  "system_dir": "~/my-fapi-config/keystore/system",
   "system_pcrs": [],
   "tcti": "swtpm:host=127.0.0.1,port=2321",
-  "user_dir": "/home/john_doe/tss2-fapi-config/keystore/user"
+  "user_dir": "~/my-fapi-config/keystore/user"
 }
