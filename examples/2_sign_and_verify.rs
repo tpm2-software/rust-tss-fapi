@@ -4,7 +4,8 @@
  * All rights reserved.
  ******************************************************************************/
 
-use log::{debug, info, warn};
+use env_logger::Builder as EnvLogger;
+use log::{debug, info, warn, LevelFilter};
 use sha2::{Digest, Sha256};
 use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
 
@@ -24,10 +25,8 @@ const MY_MESSAGE: &str = "The quick brown fox jumps over the lazy dog.";
 ///
 /// A template for creating a valid FAPI configuration is provided in the `data` sub-directory.
 fn main() {
-    // Set up Rust logger
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .init();
+    // Initialize the logger
+    EnvLogger::new().filter_level(LevelFilter::Info).init();
 
     // Print logo
     info!("TSS2 FAPI Wrapper - Example #2");

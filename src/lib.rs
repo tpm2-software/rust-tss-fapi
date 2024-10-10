@@ -25,33 +25,37 @@
 //! The following example illustrates how to use the TSS 2.0 FAPI in Rust:
 //!
 //! ```rust no_run
+//! use env_logger::Builder as EnvLogger;
+//! use log::{error, info, warn, LevelFilter};
 //! use std::num::NonZeroUsize;
-//! use log::{info, error};
 //! use tss2_fapi_rs::FapiContext;
 //!
 //! fn main() {
-//!    // Create a new FAPI context
-//!    info!("Creating FAPI context, please wait...");
-//!    let mut context = match FapiContext::new() {
-//!        Ok(fpai_ctx) => fpai_ctx,
-//!        Err(error) => panic!("Failed to create context: {:?}", error)
-//!    };
+//!     // Initialize the logger
+//!     EnvLogger::new().filter_level(LevelFilter::Info).init();
 //!
-//!    // Perform the provisioning, if it has not been done yet
-//!    info!("Provisioning, please wait...");
-//!    match context.provision(None, None, None) {
-//!        Ok(_) => info!("Success."),
-//!        Err(error) => panic!("Provisioning has failed: {:?}", error)
-//!    }
+//!     // Create a new FAPI context
+//!     info!("Creating FAPI context, please wait...");
+//!     let mut context = match FapiContext::new() {
+//!         Ok(fpai_ctx) => fpai_ctx,
+//!         Err(error) => panic!("Failed to create context: {:?}", error),
+//!     };
 //!
-//!    // Generate random
-//!    info!("Generating random data...");
-//!    for _i in 0..8 {
-//!        match context.get_random(NonZeroUsize::new(32).unwrap()) {
-//!            Ok(random) => info!("Random data: {}", hex::encode(&random[..])),
-//!            Err(error) => error!("get_random() failed: {:?}", error)
-//!        }
-//!    }
+//!     // Perform the provisioning, if it has not been done yet
+//!     info!("Provisioning, please wait...");
+//!     match context.provision(None, None, None) {
+//!         Ok(_) => info!("Success."),
+//!         Err(error) => warn!("Provisioning has failed: {:?}", error),
+//!     }
+//!
+//!     // Generate random
+//!     info!("Generating random data...");
+//!     for _i in 0..8 {
+//!         match context.get_random(NonZeroUsize::new(32).unwrap()) {
+//!             Ok(random) => info!("Random data: {}", hex::encode(&random[..])),
+//!             Err(error) => error!("get_random() failed: {:?}", error),
+//!         }
+//!     }
 //! }
 //! ```
 //!
@@ -92,7 +96,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "1.0.0"
+//! tss2-fapi-rs = "0.5.2"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!

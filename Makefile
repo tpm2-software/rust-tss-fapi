@@ -2,7 +2,8 @@ include tools/docker/docker.mk
 
 DOCKER := $(foreach target,$(DOCKER_TARGETS),docker.$(target))
 
-.PHONY: all check build tests docs package publish clean libtpms codecov $(DOCKER)
+.PHONY: all build check clean codecov docs examples libtpms package publish tests $(DOCKER)
+
 
 all: clean check build
 
@@ -19,6 +20,9 @@ build:
 
 docs:
 	cargo doc --no-deps --locked
+
+examples:
+	set -e; for i in examples/*.rs; do cargo run --example $$(basename $$i .rs); done
 
 format:
 	cargo fmt --all $(if $(APPLY_FMT),,--check)
