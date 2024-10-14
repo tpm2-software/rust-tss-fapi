@@ -1,9 +1,10 @@
 include tools/docker/docker.mk
 
+.SHELLFLAGS = -e -c
+
 DOCKER := $(foreach target,$(DOCKER_TARGETS),docker.$(target))
 
 .PHONY: all build check clean codecov docs examples libtpms package publish tests $(DOCKER)
-
 
 all: clean check build
 
@@ -18,11 +19,13 @@ tests:
 build:
 	cargo build --release --locked
 
+examples:
+	for i in $(basename $(notdir $(wildcard examples/*.rs))); do \
+		cargo run --example $$i; \
+	done
+
 docs:
 	cargo doc --no-deps --locked
-
-examples:
-	set -e; for i in examples/*.rs; do cargo run --example $$(basename $$i .rs); done
 
 format:
 	cargo fmt --all $(if $(APPLY_FMT),,--check)
