@@ -3,7 +3,7 @@
 [![Docs.rs](https://img.shields.io/docsrs/tss2-fapi-rs.svg)](https://docs.rs/tss2-fapi-rs/latest/tss2_fapi_rs/)
 [![License](https://img.shields.io/crates/l/tss2-fapi-rs)](https://opensource.org/licenses/BSD-3-Clause)
 [![CI](https://github.com/tpm2-software/rust-tss-fapi/actions/workflows/ci.yaml/badge.svg)](https://github.com/tpm2-software/rust-tss-fapi/actions/workflows/ci.yaml)
-[![Codecov](https://codecov.io/github/danieltrick/tss2-fapi-rs/graph/badge.svg?token=c3Jw6d2ZAk)](https://codecov.io/github/danieltrick/tss2-fapi-rs)
+[![codecov](https://codecov.io/github/tpm2-software/rust-tss-fapi/graph/badge.svg?token=dVklBxqY1A)](https://codecov.io/github/tpm2-software/rust-tss-fapi)
 
 # TSS 2.0 FAPI Rust Wrapper
 
@@ -50,7 +50,7 @@ The current version of the API does not offer any security or code safety guaran
 
 ## License
 
-Copyright 2024, Fraunhofer SIT sponsored by the ELISA research project  
+Copyright 2024, Fraunhofer SIT sponsored by the [ELISA](https://www.sit.fraunhofer.de/en/offers/projekte/elisa/) research project.
 All rights reserved.
 
 This work is released under the [**3-Clause BSD License**](https://opensource.org/license/bsd-3-clause) (SPDX short identifier: `BSD-3-Clause`).
