@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [0.5.2]
+## [0.5.3] - 2024-10-15
+
+#### Changed
+
+- GitHub repository has been moved to the new official location at: <https://github.com/tpm2-software/rust-tss-fapi>
+
+## [0.5.2] - 2024-10-10
 
 ### Added
 

@@ -1,12 +1,12 @@
 [package]
 name = "tss2-fapi-rs"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
 license = "BSD-3-Clause"
 authors = ["Daniel Trick <daniel.trick@sit.fraunhofer.de>"]
 readme = "docs/crates.io-README.md"
-repository = "https://github.com/danieltrick/tss2-fapi-rs/"
+repository = "https://github.com/tpm2-software/rust-tss-fapi/"
 
 [dependencies]
 json = "0.12.4"
@@ -20,15 +20,15 @@ pkg-config = "0.3.31"
 [dev-dependencies]
 const-random = "0.1.18"
 digest = "0.10.7"
-env_logger = "0.11.3"
+env_logger = "0.11.5"
 function_name = "0.3.0"
 hex = "0.4.3"
 memory-stats = "1.2.0"
 p256 = "0.13.2"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
-regex = "1.10.5"
+regex = "1.11.0"
 rsa = "0.9.6"
 serial_test = "3.1.1"
 sha2 = "0.10.8"
-uuid = "1.9.1"
+uuid = "1.10.0"

@@ -14,7 +14,7 @@
 //! The **`tss2-fapi-rs`** Rust crate provides an interface to the [**TCG TSS 2.0 Feature API (FAPI)**](https://trustedcomputinggroup.org/resource/tss-fapi/).
 //!
 //! *Architectural overview:*  
-//! ![Overview](https://raw.githubusercontent.com/danieltrick/tss2-fapi-rs/main/docs/images/tss2-fapi-rs-overview.png)
+//! ![Overview](https://raw.githubusercontent.com/tpm2-software/rust-tss-fapi/main/docs/images/tss2-fapi-rs-overview.png)
 //!
 //! ### Disclaimer
 //!
@@ -96,7 +96,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.5.2"
+//! tss2-fapi-rs = "0.5.3"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
@@ -402,16 +402,16 @@
 //! ### Source Code
 //!
 //! The `tss2-fapi-rs` source code can be found at the official GitHub repository:  
-//! <https://github.com/danieltrick/tss2-fapi-rs/>
+//! <https://github.com/tpm2-software/rust-tss-fapi/>
 //!
 //! ### Contact
 //!
 //! For bug reports, feature requests, etc., please refer to the issue tracker at:  
-//! <https://github.com/danieltrick/tss2-fapi-rs/issues/>
+//! <https://github.com/tpm2-software/rust-tss-fapi/issues/>
 //!
 //! #### Security Reporting
 //!
-//! Security vulnerabilities *should be emailed* to **all** members of the [MAINTAINERS](https://github.com/danieltrick/tss2-fapi-rs/blob/main/MAINTAINERS.md) file.
+//! Security vulnerabilities *should be emailed* to **all** members of the [MAINTAINERS](https://github.com/tpm2-software/rust-tss-fapi/blob/main/MAINTAINERS.md) file.
 //!
 //! ### License
 //!
