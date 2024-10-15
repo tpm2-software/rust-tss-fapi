@@ -12,4 +12,4 @@ Currently supported versions:
 
 ### Reporting
 
-Security vulnerabilities *should be emailed* to **all** members of the [MAINTAINERS](MAINTAINERS) file.
+Security vulnerabilities *should be emailed* to **all** members of the [MAINTAINERS](MAINTAINERS.md) file.

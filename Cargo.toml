@@ -6,7 +6,7 @@ description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
 license = "BSD-3-Clause"
 authors = ["Daniel Trick <daniel.trick@sit.fraunhofer.de>"]
 readme = "docs/crates.io-README.md"
-repository = "https://github.com/danieltrick/tss2-fapi-rs/"
+repository = "https://github.com/tpm2-software/rust-tss-fapi/"
 
 [dependencies]
 json = "0.12.4"

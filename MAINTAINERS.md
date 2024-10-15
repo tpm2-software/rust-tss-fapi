@@ -1,3 +1,4 @@
 | email                                                                                        | PGP Fingerprint                                                                                                                     |
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Daniel Trick [&lt;daniel.trick@sit.fraunhofer.de&gt;](mailto:daniel.trick@sit.fraunhofer.de) | [872CF0382BF544B6551AE84E2990B15C666AD009](https://keys.openpgp.org/vks/v1/by-fingerprint/872CF0382BF544B6551AE84E2990B15C666AD009) |
+| Andreas Fuchs [&lt;andreas.fuchs@infineon.com&gt;](mailto:andreas.fuchs@infineon.com)        | [D533275B0123D0A679F51FF48F4F9A45D7FFEE74](https://keys.openpgp.org/vks/v1/by-fingerprint/D533275B0123D0A679F51FF48F4F9A45D7FFEE74) |
