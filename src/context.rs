@@ -12,6 +12,7 @@ use std::{
     num::NonZeroUsize,
     os::raw::c_void,
     ptr,
+    sync::RwLock,
 };
 
 use crate::callback::{ActnCallback, AuthCallback, BranCallback, SignCallback};
@@ -34,7 +35,7 @@ use crate::{
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::NoResultData);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 
-/* Types */
+/* Opaque context  */
 type TctiOpaqueContextBlob = *mut [u8; 0];
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
@@ -99,6 +100,9 @@ pub struct FapiContext {
 pub struct NativeContextHolder {
     native_context: *mut FAPI_CONTEXT,
 }
+
+/// Lock for serializing certain FAPI calls
+static FAPI_CALL_RWLOCK: RwLock<()> = RwLock::new(());
 
 // ==========================================================================
 // Helper functions
@@ -176,7 +180,7 @@ impl FapiContext {
     /// *See also:* [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
     pub fn set_auth_callback(&mut self, auth_callback: AuthCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(auth_callback);
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetAuthCB(context, Some(auth_callback_entrypoint), callback_box.as_mut() as *mut AuthCallback as *mut c_void)
         }).map(|_| {
             self.callback_auth = Some(callback_box); /*store AuthCallback in FapiContext to keep it alive!*/
@@ -188,7 +192,7 @@ impl FapiContext {
     /// *See also:* [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     pub fn set_sign_callback(&mut self, sign_callback: SignCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(sign_callback);
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetSignCB(context, Some(sign_callback_entrypoint), callback_box.as_mut() as *mut SignCallback as *mut c_void)
         }).map(|_| {
             self.callback_sign = Some(callback_box); /*store SignCallback in FapiContext to keep it alive!*/
@@ -200,7 +204,7 @@ impl FapiContext {
     /// *See also:* [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     pub fn set_branch_callback(&mut self, bran_callback: BranCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(bran_callback);
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetBranchCB(context, Some(branch_callback_entrypoint), callback_box.as_mut() as *mut BranCallback as *mut c_void)
         }).map(|_| {
             self.callback_bran = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
@@ -215,7 +219,7 @@ impl FapiContext {
         actn_callback: ActnCallback,
     ) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(actn_callback);
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetPolicyActionCB(context, Some(action_callback_entrypoint), callback_box.as_mut() as *mut ActnCallback as *mut c_void)
         }).map(|_| {
             self.callback_actn = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
@@ -239,7 +243,7 @@ impl FapiContext {
         let cstr_sh = CStringHolder::try_from(auth_sh)?;
         let cstr_lo = CStringHolder::try_from(auth_lo)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_excl(|context| unsafe {
             fapi_sys::Fapi_Provision(
                 context,
                 cstr_eh.as_ptr(),
@@ -258,7 +262,7 @@ impl FapiContext {
     /// *See also:* [`Fapi_GetInfo()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___get_info.html)
     pub fn get_info(&mut self) -> Result<JsonValue, ErrorCode> {
         let mut tpm_info: *mut c_char = ptr::null_mut();
-        self.fapi_call(|context| unsafe { fapi_sys::Fapi_GetInfo(context, &mut tpm_info) })
+        self.fapi_call_shrd(|context| unsafe { fapi_sys::Fapi_GetInfo(context, &mut tpm_info) })
             .and_then(|_| {
                 FapiMemoryHolder::from_str(tpm_info)
                     .to_string()
@@ -272,7 +276,7 @@ impl FapiContext {
     /// *See also:* [`Fapi_GetRandom()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___get_random.html)
     pub fn get_random(&mut self, length: NonZeroUsize) -> Result<Vec<u8>, ErrorCode> {
         let mut data_ptr: *mut u8 = ptr::null_mut();
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetRandom(context, length.into(), &mut data_ptr)
         })
         .and_then(|_| {
@@ -303,7 +307,7 @@ impl FapiContext {
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_CreateKey(
                 context,
                 cstr_path.as_ptr(),
@@ -321,7 +325,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_data = CStringHolder::try_from(data)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_Import(context, cstr_path.as_ptr(), cstr_data.as_ptr())
         })
     }
@@ -340,7 +344,7 @@ impl FapiContext {
         let cstr_publickey = CStringHolder::try_from(new_parent_public_key)?;
         let mut encoded_subtree: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_ExportKey(
                 context,
                 cstr_duplicate.as_ptr(),
@@ -365,7 +369,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut policy: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_ExportPolicy(context, cstr_path.as_ptr(), &mut policy)
         })
         .and_then(|_| {
@@ -406,7 +410,7 @@ impl FapiContext {
         let mut blob_sec_size: usize = 0;
         let mut policy_string: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetTpmBlobs(
                 context,
                 cstr_path.as_ptr(),
@@ -435,7 +439,7 @@ impl FapiContext {
         let mut blob_data: *mut u8 = ptr::null_mut();
         let mut blob_size: usize = 0;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetEsysBlob(
                 context,
                 cstr_path.as_ptr(),
@@ -478,7 +482,7 @@ impl FapiContext {
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_CreateNv(
                 context,
                 cstr_path.as_ptr(),
@@ -509,7 +513,7 @@ impl FapiContext {
         let mut size: usize = 0;
         let mut logs: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_NvRead(
                 context,
                 cstr_path.as_ptr(),
@@ -541,7 +545,7 @@ impl FapiContext {
         fail_if_empty!(data);
         let cstr_path = CStringHolder::try_from(nv_path)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_NvWrite(context, cstr_path.as_ptr(), data.as_ptr(), data.len())
         })
     }
@@ -559,7 +563,9 @@ impl FapiContext {
     pub fn nv_increment(&mut self, nv_path: &str) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(nv_path)?;
 
-        self.fapi_call(|context| unsafe { fapi_sys::Fapi_NvIncrement(context, cstr_path.as_ptr()) })
+        self.fapi_call_shrd(|context| unsafe {
+            fapi_sys::Fapi_NvIncrement(context, cstr_path.as_ptr())
+        })
     }
 
     /// Sets bits in an NV index that was created as a bit field. Any number of bits from 0 to 64 may be SET.
@@ -568,7 +574,7 @@ impl FapiContext {
     pub fn nv_set_bits(&mut self, nv_path: &str, bitmap: u64) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(nv_path)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_NvSetBits(context, cstr_path.as_ptr(), bitmap)
         })
     }
@@ -587,7 +593,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_NvExtend(
                 context,
                 cstr_path.as_ptr(),
@@ -605,7 +611,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_WriteAuthorizeNv(context, cstr_path.as_ptr(), cstr_poli.as_ptr())
         })
     }
@@ -627,7 +633,7 @@ impl FapiContext {
 
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_PcrExtend(
                 context,
                 pcr_no,
@@ -656,7 +662,7 @@ impl FapiContext {
         let mut pcr_size: usize = 0usize;
         let mut log_data: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_PcrRead(
                 context,
                 pcr_no,
@@ -705,7 +711,7 @@ impl FapiContext {
         let mut pcr_log: *mut c_char = ptr::null_mut();
         let mut certificate: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_Quote(
                 context,
                 pcr_no.as_ptr() as *mut u32,
@@ -762,7 +768,7 @@ impl FapiContext {
         let cstr_info = CStringHolder::try_from(quote_info)?;
         let cstr_logs = CStringHolder::try_from(prc_log)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_VerifyQuote(
                 context,
                 cstr_path.as_ptr(),
@@ -797,7 +803,7 @@ impl FapiContext {
         let mut ciphertext_data: *mut u8 = ptr::null_mut();
         let mut ciphertext_size: usize = 0;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_Encrypt(
                 context,
                 cstr_path.as_ptr(),
@@ -825,7 +831,7 @@ impl FapiContext {
         let mut plaintext_data: *mut u8 = ptr::null_mut();
         let mut plaintext_size: usize = 0;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_Decrypt(
                 context,
                 cstr_path.as_ptr(),
@@ -875,7 +881,7 @@ impl FapiContext {
         let mut public_key_pem: *mut c_char = ptr::null_mut();
         let mut signer_crt_pem: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_Sign(
                 context,
                 cstr_path.as_ptr(),
@@ -917,7 +923,7 @@ impl FapiContext {
 
         let cstr_path = CStringHolder::try_from(key_path)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_VerifySignature(
                 context,
                 cstr_path.as_ptr(),
@@ -959,7 +965,7 @@ impl FapiContext {
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_CreateSeal(
                 context,
                 cstr_path.as_ptr(),
@@ -980,7 +986,7 @@ impl FapiContext {
         let mut sealed_size: usize = 0;
         let mut sealed_data: *mut u8 = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_Unseal(
                 context,
                 cstr_path.as_ptr(),
@@ -1006,7 +1012,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut cert_data_pem: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetCertificate(context, cstr_path.as_ptr(), &mut cert_data_pem)
         })
         .and_then(|_| Ok(FapiMemoryHolder::from_str(cert_data_pem).to_string()))
@@ -1029,7 +1035,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_cert = CStringHolder::try_from(cert_data)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetCertificate(context, cstr_path.as_ptr(), cstr_cert.as_ptr())
         })
     }
@@ -1041,7 +1047,7 @@ impl FapiContext {
         let mut certificate_size: usize = 0;
         let mut certificate_data: *mut u8 = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetPlatformCertificates(
                 context,
                 &mut certificate_data,
@@ -1071,7 +1077,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut description: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetDescription(context, cstr_path.as_ptr(), &mut description)
         })
         .and_then(|_| Ok(FapiMemoryHolder::from_str(description).to_string()))
@@ -1090,7 +1096,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_desc = CStringHolder::try_from(description)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetDescription(context, cstr_path.as_ptr(), cstr_desc.as_ptr())
         })
     }
@@ -1103,7 +1109,7 @@ impl FapiContext {
         let mut app_data_size: usize = 0;
         let mut app_data_buff: *mut u8 = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_GetAppData(
                 context,
                 cstr_path.as_ptr(),
@@ -1123,7 +1129,7 @@ impl FapiContext {
         fail_if_opt_empty!(app_data);
         let cstr_path = CStringHolder::try_from(path)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_SetAppData(
                 context,
                 cstr_path.as_ptr(),
@@ -1144,7 +1150,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut list: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_List(context, cstr_path.as_ptr(), &mut list)
         })
         .and_then(|_| {
@@ -1161,7 +1167,7 @@ impl FapiContext {
     pub fn delete(&mut self, path: &str) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(path)?;
 
-        self.fapi_call(|context| unsafe { fapi_sys::Fapi_Delete(context, cstr_path.as_ptr()) })
+        self.fapi_call_shrd(|context| unsafe { fapi_sys::Fapi_Delete(context, cstr_path.as_ptr()) })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1177,7 +1183,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_auth = CStringHolder::try_from(auth)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_ChangeAuth(context, cstr_path.as_ptr(), cstr_auth.as_ptr())
         })
     }
@@ -1196,7 +1202,7 @@ impl FapiContext {
         let cstr_path_pol = CStringHolder::try_from(pol_path)?;
         let cstr_path_key = CStringHolder::try_from(key_path)?;
 
-        self.fapi_call(|context| unsafe {
+        self.fapi_call_shrd(|context| unsafe {
             fapi_sys::Fapi_AuthorizePolicy(
                 context,
                 cstr_path_pol.as_ptr(),
@@ -1217,7 +1223,7 @@ impl FapiContext {
     pub fn get_tcti(&mut self) -> Result<TctiOpaqueContextBlob, ErrorCode> {
         let mut tcti: *mut fapi_sys::TSS2_TCTI_CONTEXT = ptr::null_mut();
 
-        self.fapi_call(|context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) })
+        self.fapi_call_shrd(|context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) })
             .and_then(|_| Ok(tcti as TctiOpaqueContextBlob))
     }
 
@@ -1238,8 +1244,30 @@ impl FapiContext {
     // [ Internal functions ]
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    /// Wrapper function that performs the actual FAPI invocation and checks the return value with *shared* access
+    fn fapi_call_shrd<F>(&mut self, caller: F) -> Result<(), ErrorCode>
+    where
+        F: FnOnce(*mut FAPI_CONTEXT) -> TSS2_RC,
+    {
+        let _guard = FAPI_CALL_RWLOCK
+            .read()
+            .expect("Failed to lock mutex for reading");
+        self._fapi_call(caller)
+    }
+
+    /// Wrapper function that performs the actual FAPI invocation and checks the return value with *exclusive* access
+    fn fapi_call_excl<F>(&mut self, caller: F) -> Result<(), ErrorCode>
+    where
+        F: FnOnce(*mut FAPI_CONTEXT) -> TSS2_RC,
+    {
+        let _guard = FAPI_CALL_RWLOCK
+            .write()
+            .expect("Failed to lock mutex for writing");
+        self._fapi_call(caller)
+    }
+
     /// Wrapper function that performs the actual FAPI invocation and checks the return value
-    fn fapi_call<F>(&mut self, caller: F) -> Result<(), ErrorCode>
+    fn _fapi_call<F>(&mut self, caller: F) -> Result<(), ErrorCode>
     where
         F: FnOnce(*mut FAPI_CONTEXT) -> TSS2_RC,
     {
