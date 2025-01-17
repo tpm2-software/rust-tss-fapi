@@ -1,6 +1,6 @@
 [package]
 name = "tss2-fapi-rs"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
 license = "BSD-3-Clause"

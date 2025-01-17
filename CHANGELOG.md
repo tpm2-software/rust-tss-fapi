@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.5.4] - 2025-01-17
+
+### Added
+
+- Implemented workaround to ensure that calls to `FAPI_Provision()` are serialized across all FAPI contexts and that they are *not* executed concurrently to other FAPI functions, because that function apparently is *not* thread-safe in the underlying TSS 2.0 library.
+
+### Changed
+
+- Updated Docker images for SWTPM and build/test environment to the latest versions.
+
 ## [0.5.3] - 2024-10-15
 
 #### Changed

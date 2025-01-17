@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*******************************************************************************
- * Copyright 2024, Fraunhofer SIT sponsored by the ELISA research project
+ * Copyright 2024-2025 Fraunhofer SIT, sponsored by the ELISA research project.
  * All rights reserved.
  ******************************************************************************/
 
@@ -415,7 +415,7 @@
 //!
 //! ### License
 //!
-//! Copyright 2024, [Fraunhofer SIT](https://www.sit.fraunhofer.de/) sponsored by the ELISA research project  
+//! Copyright &copy; 2024-2025 [Fraunhofer SIT](https://www.sit.fraunhofer.de/en/offers/projekte/elisa/), sponsored by the [ELISA](https://novomotive.de/#module-jltabs-143-particle) research project.  
 //! All rights reserved.
 //!
 //! This work is released under the [**3-Clause BSD License**](https://opensource.org/license/bsd-3-clause) (SPDX short identifier: `BSD-3-Clause`).
