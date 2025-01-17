@@ -428,6 +428,7 @@ mod context;
 mod error;
 mod fapi_sys;
 mod flags;
+mod locking;
 mod marshal;
 mod memory;
 mod version;
