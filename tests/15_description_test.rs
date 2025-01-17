@@ -50,7 +50,7 @@ fn test_set_description() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -59,7 +59,7 @@ fn test_set_description() {
         let desciption = generate_string::<64usize>(&mut rng);
 
         // Set description
-        match context.set_description(&key_path, Some(&desciption)) {
+        match context.set_description(key_path, Some(&desciption)) {
             Ok(_) => debug!("Description set successfully."),
             Err(error) => panic!("Setting description data has failed: {:?}", error),
         }
@@ -89,7 +89,7 @@ fn test_get_description() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -98,23 +98,20 @@ fn test_get_description() {
         let desciption = generate_string::<64usize>(&mut rng);
 
         // Set description
-        match context.set_description(&key_path, Some(&desciption)) {
+        match context.set_description(key_path, Some(&desciption)) {
             Ok(_) => debug!("Description set successfully."),
             Err(error) => panic!("Setting description data has failed: {:?}", error),
         }
 
         // Get the description data
-        let recovered_descr = match context.get_description(&key_path) {
+        let recovered_descr = match context.get_description(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting description has failed: {:?}", error),
         };
 
         // Verify
         debug!("Description: {:?}", &recovered_descr);
-        assert!(
-            (&recovered_descr.expect("No description avialble!").trim()[..])
-                .eq(&desciption.trim()[..])
-        )
+        assert!(recovered_descr.expect("No description avialble!").trim()[..].eq(desciption.trim()))
     });
 }
 
@@ -141,7 +138,7 @@ fn test_remove_description() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -150,13 +147,13 @@ fn test_remove_description() {
         let desciption = generate_string::<64usize>(&mut rng);
 
         // Set description
-        match context.set_description(&key_path, Some(&desciption)) {
+        match context.set_description(key_path, Some(&desciption)) {
             Ok(_) => debug!("Description set successfully."),
             Err(error) => panic!("Setting description data has failed: {:?}", error),
         }
 
         // Get the description data
-        let recovered_descr = match context.get_description(&key_path) {
+        let recovered_descr = match context.get_description(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting description has failed: {:?}", error),
         };
@@ -165,13 +162,13 @@ fn test_remove_description() {
         assert!(recovered_descr.is_some());
 
         // Erase the description
-        match context.set_description(&key_path, None) {
+        match context.set_description(key_path, None) {
             Ok(_) => debug!("Description erased."),
             Err(error) => panic!("Setting application-specific data has failed: {:?}", error),
         }
 
         // Get the description data
-        let recovered_descr = match context.get_description(&key_path) {
+        let recovered_descr = match context.get_description(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting description has failed: {:?}", error),
         };

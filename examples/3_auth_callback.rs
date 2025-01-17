@@ -7,9 +7,7 @@
 use env_logger::Builder as EnvLogger;
 use log::{debug, info, warn, LevelFilter};
 use std::borrow::Cow;
-use tss2_fapi_rs::{
-    AuthCallback, AuthCallbackParam, BaseErrorCode, ErrorCode, FapiContext, KeyFlags,
-};
+use tss2_fapi_rs::{AuthCallback, AuthCallbackParam, BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
 
 const MY_KEYFLAG: &[KeyFlags] = &[KeyFlags::Sign, KeyFlags::NoDA];
 const MY_KEYPATH: &str = "HS/SRK/myTestKey";
@@ -89,9 +87,6 @@ fn main() {
 ///
 /// *Note:* For simplicity, in this example, the callback function always returns our password, regardless of the requested object path.
 fn my_auth_callback(auth_param: AuthCallbackParam) -> Option<Cow<'static, str>> {
-    info!(
-        "Authorization for object at {:?} has been requested.",
-        auth_param.object_path
-    );
+    info!("Authorization for object at {:?} has been requested.", auth_param.object_path);
     Some(Cow::from(MY_AUTHVAL))
 }

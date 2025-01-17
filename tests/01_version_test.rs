@@ -30,10 +30,6 @@ fn test_version() {
         assert_eq!(CURRENT_PKG_VERSION, format!("{}", version_pkg));
 
         // Verify the FAPI version
-        assert!(
-            (version_sys.major > 3u16)
-                || ((version_sys.major == 3u16)
-                    && ((version_sys.minor > 0u16) || (version_sys.patch >= 3u16)))
-        );
+        assert!((version_sys.major > 3u16) || ((version_sys.major == 3u16) && ((version_sys.minor > 0u16) || (version_sys.patch >= 3u16))));
     });
 }

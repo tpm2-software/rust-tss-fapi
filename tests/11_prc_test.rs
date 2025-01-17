@@ -49,11 +49,7 @@ fn test_pcr_extend() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Extend PCR with data
-        match context.pcr_extend(
-            PCR_NO[i % PCR_NO.len()],
-            &generate_bytes::<128usize>(&mut rng)[..],
-            None,
-        ) {
+        match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], None) {
             Ok(_) => debug!("PCR extended."),
             Err(error) => panic!("PCR extension has failed: {:?}", error),
         }
@@ -136,9 +132,9 @@ fn test_pcr_read() {
         // Verify
         assert_eq!(pcr_value_0.0.len(), pcr_value_1.0.len());
         assert_eq!(pcr_value_1.0.len(), pcr_value_2.0.len());
-        assert!((&pcr_value_0.0[..]).ne(&pcr_value_1.0[..]));
-        assert!((&pcr_value_1.0[..]).ne(&pcr_value_2.0[..]));
-        assert!((&pcr_value_2.0[..]).ne(&pcr_value_0.0[..]));
+        assert!(pcr_value_0.0[..].ne(&pcr_value_1.0[..]));
+        assert!(pcr_value_1.0[..].ne(&pcr_value_2.0[..]));
+        assert!(pcr_value_2.0[..].ne(&pcr_value_0.0[..]));
     });
 }
 
@@ -180,10 +176,7 @@ fn test_pcr_read_with_quote() {
 
         // Verify
         assert!(pcr_value.0.len() >= 20usize);
-        assert!(pcr_value
-            .1
-            .as_ref()
-            .map_or(false, |log_data| !log_data.is_empty()));
+        assert!(pcr_value.1.as_ref().map_or(false, |log_data| !log_data.is_empty()));
         debug!("PCR value: 0x{}", hex::encode(&pcr_value.0[..]));
         debug!("PCR log: {:?}", pcr_value.1.unwrap().to_string());
     });
@@ -212,7 +205,7 @@ fn test_pcr_quote() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create attestation key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -234,14 +227,7 @@ fn test_pcr_quote() {
         let qualifying_data = generate_bytes::<32usize>(&mut rng);
 
         // Create attestation
-        let attestation = match context.quote(
-            &pcr_list,
-            None,
-            &key_path,
-            Some(&qualifying_data[..]),
-            false,
-            false,
-        ) {
+        let attestation = match context.quote(&pcr_list, None, key_path, Some(&qualifying_data[..]), false, false) {
             Ok(data) => data,
             Err(error) => panic!("Quote operation has failed: {:?}", error),
         };
@@ -281,7 +267,7 @@ fn test_pcr_quote_with_log() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create attestation key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -303,14 +289,7 @@ fn test_pcr_quote_with_log() {
         let qualifying_data = generate_bytes::<32usize>(&mut rng);
 
         // Create attestation
-        let attestation = match context.quote(
-            &pcr_list,
-            None,
-            &key_path,
-            Some(&qualifying_data[..]),
-            true,
-            true,
-        ) {
+        let attestation = match context.quote(&pcr_list, None, key_path, Some(&qualifying_data[..]), true, true) {
             Ok(data) => data,
             Err(error) => panic!("Quote operation has failed: {:?}", error),
         };
@@ -352,7 +331,7 @@ fn test_pcr_verify_quote() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create attestation key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -374,14 +353,7 @@ fn test_pcr_verify_quote() {
         let qualifying_data = generate_bytes::<32usize>(&mut rng);
 
         // Create attestation
-        let attestation = match context.quote(
-            &pcr_list,
-            None,
-            &key_path,
-            Some(&qualifying_data[..]),
-            false,
-            false,
-        ) {
+        let attestation = match context.quote(&pcr_list, None, key_path, Some(&qualifying_data[..]), false, false) {
             Ok(data) => data,
             Err(error) => panic!("Quote operation has failed: {:?}", error),
         };
@@ -391,13 +363,7 @@ fn test_pcr_verify_quote() {
         debug!("Signature: {:?}", hex::encode(&attestation.1[..]));
 
         // Verify attestation
-        let verify_result = match context.verify_quote(
-            &key_path,
-            Some(&qualifying_data[..]),
-            &attestation.0,
-            &attestation.1[..],
-            None,
-        ) {
+        let verify_result = match context.verify_quote(key_path, Some(&qualifying_data[..]), &attestation.0, &attestation.1[..], None) {
             Ok(data) => data,
             Err(error) => panic!("Verification of quote has failed: {:?}", error),
         };
@@ -410,13 +376,7 @@ fn test_pcr_verify_quote() {
         let signature_mod = increment(&attestation.1[..]);
 
         // Verify attestation (again)
-        let verify_result = match context.verify_quote(
-            &key_path,
-            Some(&qualifying_data[..]),
-            &attestation.0,
-            &signature_mod[..],
-            None,
-        ) {
+        let verify_result = match context.verify_quote(key_path, Some(&qualifying_data[..]), &attestation.0, &signature_mod[..], None) {
             Ok(data) => data,
             Err(error) => panic!("Verification of quote has failed: {:?}", error),
         };
@@ -429,13 +389,7 @@ fn test_pcr_verify_quote() {
         let qualifying_mod = increment(&qualifying_data[..]);
 
         // Verify attestation (again)
-        let verify_result = match context.verify_quote(
-            &key_path,
-            Some(&qualifying_mod[..]),
-            &attestation.0,
-            &attestation.1[..],
-            None,
-        ) {
+        let verify_result = match context.verify_quote(key_path, Some(&qualifying_mod[..]), &attestation.0, &attestation.1[..], None) {
             Ok(data) => data,
             Err(error) => panic!("Verification of quote has failed: {:?}", error),
         };

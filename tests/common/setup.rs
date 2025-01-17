@@ -39,10 +39,7 @@ static MUTEX: Mutex<bool> = Mutex::new(false);
 /* Accquire the lock */
 macro_rules! accquire_lock {
     ($mutex:ident, $lock:ident) => {
-        let mut $lock = $mutex
-            .lock()
-            .or_else(|err| Ok::<_, ()>(err.into_inner()))
-            .unwrap();
+        let mut $lock = $mutex.lock().or_else(|err| Ok::<_, ()>(err.into_inner())).unwrap();
         assert_eq!(*$lock, false);
         *$lock = true;
     };
@@ -54,6 +51,12 @@ pub struct TestConfiguration<'a> {
     data_path: PathBuf,
     work_path: PathBuf,
     finalizer: Option<Finalizer>,
+}
+
+impl Default for TestConfiguration<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> TestConfiguration<'a> {
@@ -87,11 +90,8 @@ impl<'a> TestConfiguration<'a> {
         });
 
         if let Some(capture) = regex_swtpm.captures(tcti_conf) {
-            let (host, port) = (
-                capture.get(1).unwrap().as_str(),
-                capture.get(2).unwrap().as_str().parse::<u16>().unwrap(),
-            );
-            Self::check_tpm_connection(&host, port);
+            let (host, port) = (capture.get(1).unwrap().as_str(), capture.get(2).unwrap().as_str().parse::<u16>().unwrap());
+            Self::check_tpm_connection(host, port);
         }
 
         let base_path = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -126,18 +126,12 @@ impl<'a> TestConfiguration<'a> {
         }
     }
 
-    fn write_fapi_config(
-        conf_file: &Path,
-        data_path: &Path,
-        work_path: &Path,
-        prof_name: &str,
-        tcti_conf: &str,
-    ) {
-        if Path::try_exists(&work_path).unwrap_or(true) {
-            fs::remove_dir_all(&work_path).expect("Failed to remove existing directory!");
+    fn write_fapi_config(conf_file: &Path, data_path: &Path, work_path: &Path, prof_name: &str, tcti_conf: &str) {
+        if Path::try_exists(work_path).unwrap_or(true) {
+            fs::remove_dir_all(work_path).expect("Failed to remove existing directory!");
         }
 
-        fs::create_dir_all(&work_path).expect("Failed to create subdirectories!");
+        fs::create_dir_all(work_path).expect("Failed to create subdirectories!");
 
         let prof_path = work_path.join("profiles");
         debug!("Prof directory: \"{}\"", prof_path.to_str().unwrap());
@@ -159,8 +153,7 @@ impl<'a> TestConfiguration<'a> {
         debug!("Logs directory: \"{}\"", logs_path.to_str().unwrap());
         fs::create_dir_all(&logs_path).expect("Failed to create subdirectories!");
 
-        let mut content = fs::read_to_string(data_path.join("fapi-config.json.template"))
-            .expect("Failed to read input file!");
+        let mut content = fs::read_to_string(data_path.join("fapi-config.json.template")).expect("Failed to read input file!");
         content = content.replace("{{TCTI_CFG}}", tcti_conf);
         content = content.replace("{{PROF_CFG}}", prof_name);
         content = content.replace("{{PROF_DIR}}", prof_path.to_str().unwrap());
@@ -169,7 +162,7 @@ impl<'a> TestConfiguration<'a> {
         content = content.replace("{{LOGS_DIR}}", logs_path.to_str().unwrap());
 
         trace!("FAPI conf data: {}", content.trim());
-        fs::write(&conf_file, &content).expect("Failed to write configuration to output file!");
+        fs::write(conf_file, &content).expect("Failed to write configuration to output file!");
 
         for entry in fs::read_dir(data_path.join("profiles")).unwrap().flatten() {
             let fname = entry.file_name();
@@ -185,10 +178,7 @@ impl<'a> TestConfiguration<'a> {
         debug!("Connecting to SWTPM, please wait... [{}:{}]", host, port);
         let start_time = Instant::now();
         loop {
-            match TcpStream::connect_timeout(
-                &SocketAddr::new(IpAddr::from_str(host).unwrap(), port),
-                Duration::from_secs(10),
-            ) {
+            match TcpStream::connect_timeout(&SocketAddr::new(IpAddr::from_str(host).unwrap(), port), Duration::from_secs(10)) {
                 Ok(conn) => {
                     return conn.shutdown(std::net::Shutdown::Both).unwrap();
                 }
@@ -203,7 +193,7 @@ impl<'a> TestConfiguration<'a> {
 
     #[allow(dead_code)]
     pub fn prof_name(&self) -> &str {
-        &self.prof_name
+        self.prof_name
     }
 
     #[allow(dead_code)]
@@ -217,7 +207,7 @@ impl<'a> TestConfiguration<'a> {
     }
 }
 
-impl<'a> Drop for TestConfiguration<'a> {
+impl Drop for TestConfiguration<'_> {
     fn drop(&mut self) {
         if let Some(finalizer) = self.finalizer.take() {
             finalizer();

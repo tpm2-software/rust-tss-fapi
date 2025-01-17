@@ -79,20 +79,14 @@ fn main() {
 /// Try to detect the library using **pkg-config**, unless the environment variables `TSS2_INCLUDE_PATH` and `TSS2_LIBRARY_PATH` are defined!
 fn detect_tss2_library() -> Result<LibraryConfig, Error> {
     // Check environment variables
-    let env_include_path = env::var("TSS2_INCLUDE_PATH").map(|value| PathBuf::from(value));
-    let env_library_path = env::var("TSS2_LIBRARY_PATH").map(|value| PathBuf::from(value));
+    let env_include_path = env::var("TSS2_INCLUDE_PATH").map(PathBuf::from);
+    let env_library_path = env::var("TSS2_LIBRARY_PATH").map(PathBuf::from);
 
     // Shortcut if `TSS2_INCLUDE_PATH` and `TSS2_LIBRARY_PATH` are defined
     if let Ok(include_path) = env_include_path {
         if let Ok(library_path) = env_library_path {
-            let library_version =
-                env::var("TSS2_LIBRARY_VERS").unwrap_or_else(|_| LIBRARY_MIN_VERSION.to_owned());
-            return Ok((
-                vec![LIBRARY_NAME.to_owned()],
-                vec![library_path],
-                vec![include_path],
-                library_version,
-            ));
+            let library_version = env::var("TSS2_LIBRARY_VERS").unwrap_or_else(|_| LIBRARY_MIN_VERSION.to_owned());
+            return Ok((vec![LIBRARY_NAME.to_owned()], vec![library_path], vec![include_path], library_version));
         }
     }
 
@@ -101,42 +95,18 @@ fn detect_tss2_library() -> Result<LibraryConfig, Error> {
         .cargo_metadata(false)
         .atleast_version(LIBRARY_MIN_VERSION)
         .probe(LIBRARY_NAME)
-        .map(|config| {
-            (
-                config.libs,
-                config.link_paths,
-                config.include_paths,
-                config.version,
-            )
-        })
+        .map(|config| (config.libs, config.link_paths, config.include_paths, config.version))
 }
 
 /// Persist the version string to output file, so that it can be evaluated in the code at runtime
 fn write_version_string(path: &Path, version_string: &str) -> bool {
     // Parse the version string, assuming that is is in the `"major.minor.patch"` format
     let mut tokens = version_string.split('.');
-    let vers_major = tokens
-        .next()
-        .unwrap_or_default()
-        .parse::<u16>()
-        .expect("Failed to parse version string!");
-    let vers_minor = tokens
-        .next()
-        .unwrap_or_default()
-        .parse::<u16>()
-        .expect("Failed to parse version string!");
-    let vers_patch = tokens
-        .next()
-        .unwrap_or_default()
-        .parse::<u16>()
-        .expect("Failed to parse version string!");
+    let vers_major = tokens.next().unwrap_or_default().parse::<u16>().expect("Failed to parse version string!");
+    let vers_minor = tokens.next().unwrap_or_default().parse::<u16>().expect("Failed to parse version string!");
+    let vers_patch = tokens.next().unwrap_or_default().parse::<u16>().expect("Failed to parse version string!");
 
     // Try to write the version string to the output file
     let mut file = File::create(path).expect("Failed to create output file for version!");
-    writeln!(
-        file,
-        r#"pub const TSS2_FAPI_VERSION: &str = "{}.{}.{}";"#,
-        vers_major, vers_minor, vers_patch
-    )
-    .is_ok()
+    writeln!(file, r#"pub const TSS2_FAPI_VERSION: &str = "{}.{}.{}";"#, vers_major, vers_minor, vers_patch).is_ok()
 }

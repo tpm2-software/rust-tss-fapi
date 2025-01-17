@@ -50,7 +50,7 @@ fn test_set_appdata() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -59,7 +59,7 @@ fn test_set_appdata() {
         let app_data = generate_bytes::<128usize>(&mut rng);
 
         // Set application data
-        match context.set_app_data(&key_path, Some(&app_data[..])) {
+        match context.set_app_data(key_path, Some(&app_data[..])) {
             Ok(_) => debug!("Data set successfully."),
             Err(error) => panic!("Setting application-specific data has failed: {:?}", error),
         }
@@ -89,7 +89,7 @@ fn test_get_appdata() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -98,13 +98,13 @@ fn test_get_appdata() {
         let app_data = generate_bytes::<128usize>(&mut rng);
 
         // Set application data
-        match context.set_app_data(&key_path, Some(&app_data[..])) {
+        match context.set_app_data(key_path, Some(&app_data[..])) {
             Ok(_) => debug!("Data set successfully."),
             Err(error) => panic!("Setting application-specific data has failed: {:?}", error),
         }
 
         // Get the application data
-        let recovered_data = match context.get_app_data(&key_path) {
+        let recovered_data = match context.get_app_data(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting application-specific data has failed: {:?}", error),
         };
@@ -117,10 +117,7 @@ fn test_get_appdata() {
                 .map(|data| hex::encode(&data[..]))
                 .unwrap_or_else(|| "(None)".to_owned())
         );
-        assert!(
-            (&recovered_data.expect("No application-specific data avialble!")[..])
-                .eq_ignore_ascii_case(&app_data[..])
-        )
+        assert!(recovered_data.expect("No application-specific data avialble!")[..].eq_ignore_ascii_case(&app_data[..]))
     });
 }
 
@@ -147,7 +144,7 @@ fn test_remove_appdata() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -156,13 +153,13 @@ fn test_remove_appdata() {
         let app_data = generate_bytes::<128usize>(&mut rng);
 
         // Set application data
-        match context.set_app_data(&key_path, Some(&app_data[..])) {
+        match context.set_app_data(key_path, Some(&app_data[..])) {
             Ok(_) => debug!("Data set successfully."),
             Err(error) => panic!("Setting application-specific data has failed: {:?}", error),
         }
 
         // Get the application data
-        let recovered_data = match context.get_app_data(&key_path) {
+        let recovered_data = match context.get_app_data(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting application-specific data has failed: {:?}", error),
         };
@@ -171,13 +168,13 @@ fn test_remove_appdata() {
         assert!(recovered_data.is_some());
 
         // Erase application data
-        match context.set_app_data(&key_path, None) {
+        match context.set_app_data(key_path, None) {
             Ok(_) => debug!("Data erased."),
             Err(error) => panic!("Setting application-specific data has failed: {:?}", error),
         }
 
         // Get the application data (again)
-        let recovered_data = match context.get_app_data(&key_path) {
+        let recovered_data = match context.get_app_data(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting application-specific data has failed: {:?}", error),
         };

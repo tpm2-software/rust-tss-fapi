@@ -28,18 +28,14 @@ pub struct VersionInfo {
 /// **`(package_version, fapi_library_version)`**
 pub fn get_version() -> (&'static VersionInfo, &'static VersionInfo) {
     (
-        VERSION_INFO_PKG.get_or_init(|| {
-            parse_version(env!("CARGO_PKG_VERSION", "Package version not defined!"))
-        }),
+        VERSION_INFO_PKG.get_or_init(|| parse_version(env!("CARGO_PKG_VERSION", "Package version not defined!"))),
         VERSION_INFO_SYS.get_or_init(|| parse_version(crate::fapi_sys::TSS2_FAPI_VERSION)),
     )
 }
 
 /// Parse a version string that is in the `"major.minor.patch"` format into a [`VersionInfo`] struct.
 fn parse_version(version_string: &str) -> VersionInfo {
-    let mut tokens = version_string
-        .split('.')
-        .map(|str| u16::from_str_radix(str, 10).unwrap_or_default());
+    let mut tokens = version_string.split('.').map(|str| str.parse::<u16>().unwrap_or_default());
     VersionInfo {
         major: tokens.next().unwrap_or_default(),
         minor: tokens.next().unwrap_or_default(),

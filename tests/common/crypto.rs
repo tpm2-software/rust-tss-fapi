@@ -6,10 +6,7 @@
 
 use digest::{Digest, FixedOutputReset};
 use p256::{
-    ecdsa::{
-        signature::RandomizedDigestSigner as EccRandomizedDigestSigner, Signature as EccSignature,
-        SigningKey as EccSigningKey,
-    },
+    ecdsa::{signature::RandomizedDigestSigner as EccRandomizedDigestSigner, Signature as EccSignature, SigningKey as EccSigningKey},
     pkcs8::DecodePrivateKey,
     PublicKey as EccPublicKey, SecretKey as EccPrivateKey,
 };
@@ -36,10 +33,7 @@ pub enum KeyType {
 
 macro_rules! key_type {
     ($name:ident, $id:literal, $type:path) => {
-        if $name
-            .get(..$id.len())
-            .map_or(false, |id| id.eq_ignore_ascii_case($id))
-        {
+        if $name.get(..$id.len()).map_or(false, |id| id.eq_ignore_ascii_case($id)) {
             return Some($type);
         }
     };
@@ -73,24 +67,16 @@ pub enum PrivateKey {
 /// Load public key from PEM-encoded data
 pub fn load_public_key(pem_data: &str, key_type: KeyType) -> Option<PublicKey> {
     match key_type {
-        KeyType::RsaKey => RsaPublicKey::from_public_key_pem(pem_data)
-            .map(|rsa_key| PublicKey::RsaKey(rsa_key))
-            .ok(),
-        KeyType::EccKey => EccPublicKey::from_public_key_pem(pem_data)
-            .map(|ecc_key| PublicKey::EccKey(ecc_key))
-            .ok(),
+        KeyType::RsaKey => RsaPublicKey::from_public_key_pem(pem_data).map(PublicKey::RsaKey).ok(),
+        KeyType::EccKey => EccPublicKey::from_public_key_pem(pem_data).map(PublicKey::EccKey).ok(),
     }
 }
 
 /// Load private key from PEM-encoded data
 pub fn load_private_key(pem_data: &str, key_type: KeyType) -> Option<PrivateKey> {
     match key_type {
-        KeyType::RsaKey => RsaPrivateKey::from_pkcs8_pem(pem_data)
-            .map(|rsa_key| PrivateKey::RsaKey(rsa_key))
-            .ok(),
-        KeyType::EccKey => EccPrivateKey::from_pkcs8_pem(pem_data)
-            .map(|ecc_key| PrivateKey::EccKey(ecc_key))
-            .ok(),
+        KeyType::RsaKey => RsaPrivateKey::from_pkcs8_pem(pem_data).map(PrivateKey::RsaKey).ok(),
+        KeyType::EccKey => EccPrivateKey::from_pkcs8_pem(pem_data).map(PrivateKey::EccKey).ok(),
     }
 }
 
@@ -99,11 +85,7 @@ pub fn load_private_key(pem_data: &str, key_type: KeyType) -> Option<PrivateKey>
 // ==========================================================================
 
 /// Compute signature using the given private key
-pub fn create_signature(
-    private_key: &PrivateKey,
-    hash_algo: &HashAlgorithm,
-    message: &[u8],
-) -> Option<Vec<u8>> {
+pub fn create_signature(private_key: &PrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
     match private_key {
         PrivateKey::RsaKey(rsa_key) => create_signature_rsa(rsa_key, hash_algo, message),
         PrivateKey::EccKey(ecc_key) => create_signature_ecc(ecc_key, hash_algo, message),
@@ -111,24 +93,11 @@ pub fn create_signature(
 }
 
 /// Compute signature using the RSA-SSA scheme
-fn create_signature_rsa(
-    private_key: &RsaPrivateKey,
-    hash_algo: &HashAlgorithm,
-    message: &[u8],
-) -> Option<Vec<u8>> {
+fn create_signature_rsa(private_key: &RsaPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
     match hash_algo {
-        HashAlgorithm::Sha2_256 => Some(_create_signature_rsa(
-            private_key,
-            Sha256::new_with_prefix(message),
-        )),
-        HashAlgorithm::Sha2_384 => Some(_create_signature_rsa(
-            private_key,
-            Sha384::new_with_prefix(message),
-        )),
-        HashAlgorithm::Sha2_512 => Some(_create_signature_rsa(
-            private_key,
-            Sha512::new_with_prefix(message),
-        )),
+        HashAlgorithm::Sha2_256 => Some(_create_signature_rsa(private_key, Sha256::new_with_prefix(message))),
+        HashAlgorithm::Sha2_384 => Some(_create_signature_rsa(private_key, Sha384::new_with_prefix(message))),
+        HashAlgorithm::Sha2_512 => Some(_create_signature_rsa(private_key, Sha512::new_with_prefix(message))),
         _ => None,
     }
 }
@@ -139,20 +108,11 @@ where
     D: Digest + FixedOutputReset,
 {
     let sign_key = RsaSigningKey::<D>::from(private_key.to_owned());
-    RsaRandomizedDigestSigner::<D, RsaSignature>::sign_digest_with_rng(
-        &sign_key,
-        &mut thread_rng(),
-        digest,
-    )
-    .to_vec()
+    RsaRandomizedDigestSigner::<D, RsaSignature>::sign_digest_with_rng(&sign_key, &mut thread_rng(), digest).to_vec()
 }
 
 /// Compute signature using the ECDSA-scheme on NIST P-256 curve
-fn create_signature_ecc(
-    private_key: &EccPrivateKey,
-    hash_algo: &HashAlgorithm,
-    message: &[u8],
-) -> Option<Vec<u8>> {
+fn create_signature_ecc(private_key: &EccPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
     match hash_algo {
         HashAlgorithm::Sha2_256 => Some(_create_signature_ecc(private_key, message)),
         _ => None,
@@ -162,11 +122,7 @@ fn create_signature_ecc(
 /// Compute signature using the ECDSA-scheme on NIST P-256 curve
 fn _create_signature_ecc(private_key: &EccPrivateKey, message: &[u8]) -> Vec<u8> {
     let sign_key = EccSigningKey::from(private_key);
-    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(
-        &sign_key,
-        &mut thread_rng(),
-        Sha256::new_with_prefix(message),
-    )
-    .to_der()
-    .to_vec()
+    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut thread_rng(), Sha256::new_with_prefix(message))
+        .to_der()
+        .to_vec()
 }

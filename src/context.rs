@@ -21,25 +21,24 @@ use crate::fapi_sys::{
     FAPI_CONTEXT, TPM2_RC, TSS2_RC,
 };
 use crate::marshal::u64_from_be;
-use crate::memory::{
-    cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr, CStringHolder,
-    FapiMemoryHolder,
-};
+use crate::memory::{cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr, CStringHolder, FapiMemoryHolder};
 use crate::{
     callback::{ActnCallback, AuthCallback, BranCallback, SignCallback},
     locking::LockGuard,
 };
-use crate::{
-    flags::flags_to_string, BaseErrorCode, BlobType, ErrorCode, InternalError, KeyFlags, NvFlags,
-    PaddingFlags, QuoteFlags, SealFlags,
-};
+use crate::{flags::flags_to_string, BaseErrorCode, BlobType, ErrorCode, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
 
 /* Const */
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::NoResultData);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 
-/* Opaque context  */
+/* Opaque type  */
 type TctiOpaqueContextBlob = *mut [u8; 0];
+
+/* Complex types */
+type TpmBlobs = (Option<Vec<u8>>, Option<Vec<u8>>, Option<JsonValue>);
+type SignResult = (Vec<u8>, Option<String>, Option<String>);
+type QuoteResult = (JsonValue, Vec<u8>, Option<JsonValue>, Option<String>);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///
@@ -162,10 +161,7 @@ impl FapiContext {
     /// *See also:* [`Fapi_Initialize()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___initialize.html)
     pub fn new() -> Result<Self, ErrorCode> {
         let mut native_context: *mut FAPI_CONTEXT = ptr::null_mut();
-        create_result_from_retval(unsafe {
-            fapi_sys::Fapi_Initialize(&mut native_context, ptr::null())
-        })
-        .map(|_| Self {
+        create_result_from_retval(unsafe { fapi_sys::Fapi_Initialize(&mut native_context, ptr::null()) }).map(|_| Self {
             native_holder: NativeContextHolder::new(native_context),
             callback_auth: None,
             callback_sign: None,
@@ -184,8 +180,13 @@ impl FapiContext {
     pub fn set_auth_callback(&mut self, auth_callback: AuthCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(auth_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetAuthCB(context, Some(auth_callback_entrypoint), callback_box.as_mut() as *mut AuthCallback as *mut c_void)
-        }).map(|_| {
+            fapi_sys::Fapi_SetAuthCB(
+                context,
+                Some(auth_callback_entrypoint),
+                callback_box.as_mut() as *mut AuthCallback as *mut c_void,
+            )
+        })
+        .map(|_| {
             self.callback_auth = Some(callback_box); /*store AuthCallback in FapiContext to keep it alive!*/
         })
     }
@@ -196,8 +197,13 @@ impl FapiContext {
     pub fn set_sign_callback(&mut self, sign_callback: SignCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(sign_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetSignCB(context, Some(sign_callback_entrypoint), callback_box.as_mut() as *mut SignCallback as *mut c_void)
-        }).map(|_| {
+            fapi_sys::Fapi_SetSignCB(
+                context,
+                Some(sign_callback_entrypoint),
+                callback_box.as_mut() as *mut SignCallback as *mut c_void,
+            )
+        })
+        .map(|_| {
             self.callback_sign = Some(callback_box); /*store SignCallback in FapiContext to keep it alive!*/
         })
     }
@@ -208,8 +214,13 @@ impl FapiContext {
     pub fn set_branch_callback(&mut self, bran_callback: BranCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(bran_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetBranchCB(context, Some(branch_callback_entrypoint), callback_box.as_mut() as *mut BranCallback as *mut c_void)
-        }).map(|_| {
+            fapi_sys::Fapi_SetBranchCB(
+                context,
+                Some(branch_callback_entrypoint),
+                callback_box.as_mut() as *mut BranCallback as *mut c_void,
+            )
+        })
+        .map(|_| {
             self.callback_bran = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
         })
     }
@@ -217,14 +228,16 @@ impl FapiContext {
     /// This function registers an application-defined function as a callback to allow the FAPI to notify the application about policy actions. The callback is implemented via the [`ActnCallback`](crate::ActnCallback) struct.
     ///
     /// *See also:* [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    pub fn set_policy_action_callback(
-        &mut self,
-        actn_callback: ActnCallback,
-    ) -> Result<(), ErrorCode> {
+    pub fn set_policy_action_callback(&mut self, actn_callback: ActnCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(actn_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetPolicyActionCB(context, Some(action_callback_entrypoint), callback_box.as_mut() as *mut ActnCallback as *mut c_void)
-        }).map(|_| {
+            fapi_sys::Fapi_SetPolicyActionCB(
+                context,
+                Some(action_callback_entrypoint),
+                callback_box.as_mut() as *mut ActnCallback as *mut c_void,
+            )
+        })
+        .map(|_| {
             self.callback_actn = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
         })
     }
@@ -236,23 +249,13 @@ impl FapiContext {
     /// Provisions a TSS with its TPM. This includes the setting of important passwords and policy settings as well as the readout of the EK and its certificate and the initialization of the system-wide keystore.
     ///
     /// *See also:* [`Fapi_Provision()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___provision.html)
-    pub fn provision(
-        &mut self,
-        auth_eh: Option<&str>,
-        auth_sh: Option<&str>,
-        auth_lo: Option<&str>,
-    ) -> Result<(), ErrorCode> {
+    pub fn provision(&mut self, auth_eh: Option<&str>, auth_sh: Option<&str>, auth_lo: Option<&str>) -> Result<(), ErrorCode> {
         let cstr_eh = CStringHolder::try_from(auth_eh)?;
         let cstr_sh = CStringHolder::try_from(auth_sh)?;
         let cstr_lo = CStringHolder::try_from(auth_lo)?;
 
         self.fapi_call(true, |context| unsafe {
-            fapi_sys::Fapi_Provision(
-                context,
-                cstr_eh.as_ptr(),
-                cstr_sh.as_ptr(),
-                cstr_lo.as_ptr(),
-            )
+            fapi_sys::Fapi_Provision(context, cstr_eh.as_ptr(), cstr_sh.as_ptr(), cstr_lo.as_ptr())
         })
     }
 
@@ -265,15 +268,9 @@ impl FapiContext {
     /// *See also:* [`Fapi_GetInfo()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___get_info.html)
     pub fn get_info(&mut self) -> Result<JsonValue, ErrorCode> {
         let mut tpm_info: *mut c_char = ptr::null_mut();
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetInfo(context, &mut tpm_info)
-        })
-        .and_then(|_| {
-            FapiMemoryHolder::from_str(tpm_info)
-                .to_string()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
-        .and_then(|info_data| json::parse(&info_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetInfo(context, &mut tpm_info) })
+            .and_then(|_| FapiMemoryHolder::from_str(tpm_info).to_string().ok_or(ERR_NO_RESULT_DATA))
+            .and_then(|info_data| json::parse(&info_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
     }
 
     /// Creates an array with a specified number of bytes. May execute the underlying TPM command multiple times if the requested number of bytes is too big.
@@ -281,14 +278,8 @@ impl FapiContext {
     /// *See also:* [`Fapi_GetRandom()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___get_random.html)
     pub fn get_random(&mut self, length: NonZeroUsize) -> Result<Vec<u8>, ErrorCode> {
         let mut data_ptr: *mut u8 = ptr::null_mut();
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetRandom(context, length.into(), &mut data_ptr)
-        })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(data_ptr, length.into())
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetRandom(context, length.into(), &mut data_ptr) })
+            .and_then(|_| FapiMemoryHolder::from_raw(data_ptr, length.into()).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,13 +289,7 @@ impl FapiContext {
     /// Creates a key inside the TPM based on the Key type, using the supplied policy and authValue. The key is then stored either in the FAPI metadata store or the TPM.
     ///
     /// *See also:* [`Fapi_CreateKey()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___create_key.html)
-    pub fn create_key(
-        &mut self,
-        key_path: &str,
-        key_type: Option<&[KeyFlags]>,
-        pol_path: Option<&str>,
-        auth_val: Option<&str>,
-    ) -> Result<(), ErrorCode> {
+    pub fn create_key(&mut self, key_path: &str, key_type: Option<&[KeyFlags]>, pol_path: Option<&str>, auth_val: Option<&str>) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(key_type);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
@@ -313,13 +298,7 @@ impl FapiContext {
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_CreateKey(
-                context,
-                cstr_path.as_ptr(),
-                cstr_type.as_ptr(),
-                cstr_poli.as_ptr(),
-                cstr_auth.as_ptr(),
-            )
+            fapi_sys::Fapi_CreateKey(context, cstr_path.as_ptr(), cstr_type.as_ptr(), cstr_poli.as_ptr(), cstr_auth.as_ptr())
         })
     }
 
@@ -340,31 +319,16 @@ impl FapiContext {
     /// If the parameter `new_parent_public_key` is `None`, then the *public key* pointed to by `key_to_duplicate` will be exported.
     ///
     /// *See also:* [`Fapi_ExportKey()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___export_key.html)
-    pub fn export_key(
-        &mut self,
-        key_to_duplicate: &str,
-        new_parent_public_key: Option<&str>,
-    ) -> Result<JsonValue, ErrorCode> {
+    pub fn export_key(&mut self, key_to_duplicate: &str, new_parent_public_key: Option<&str>) -> Result<JsonValue, ErrorCode> {
         let cstr_duplicate = CStringHolder::try_from(key_to_duplicate)?;
         let cstr_publickey = CStringHolder::try_from(new_parent_public_key)?;
         let mut encoded_subtree: *mut c_char = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_ExportKey(
-                context,
-                cstr_duplicate.as_ptr(),
-                cstr_publickey.as_ptr(),
-                &mut encoded_subtree,
-            )
+            fapi_sys::Fapi_ExportKey(context, cstr_duplicate.as_ptr(), cstr_publickey.as_ptr(), &mut encoded_subtree)
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_str(encoded_subtree)
-                .to_string()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
-        .and_then(|exported_data| {
-            json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_str(encoded_subtree).to_string().ok_or(ERR_NO_RESULT_DATA))
+        .and_then(|exported_data| json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
     }
 
     /// Exports a policy to a JSON encoded byte buffer.
@@ -377,14 +341,8 @@ impl FapiContext {
         self.fapi_call(false, |context| unsafe {
             fapi_sys::Fapi_ExportPolicy(context, cstr_path.as_ptr(), &mut policy)
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_str(policy)
-                .to_string()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
-        .and_then(|exported_data| {
-            json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_str(policy).to_string().ok_or(ERR_NO_RESULT_DATA))
+        .and_then(|exported_data| json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
     }
 
     /// Get the public and private BLOBs of a TPM object. They can be loaded with a lower-level API such as the SAPI or the ESAPI.
@@ -396,13 +354,7 @@ impl FapiContext {
     /// ###### Return Value
     ///
     /// **`(Option(public_key), Option(private_key), Option(policy))`**
-    pub fn get_tpm_blobs(
-        &mut self,
-        key_path: &str,
-        get_pubkey: bool,
-        get_privkey: bool,
-        get_policy: bool,
-    ) -> Result<(Option<Vec<u8>>, Option<Vec<u8>>, Option<JsonValue>), ErrorCode> {
+    pub fn get_tpm_blobs(&mut self, key_path: &str, get_pubkey: bool, get_privkey: bool, get_policy: bool) -> Result<TpmBlobs, ErrorCode> {
         if !(get_pubkey || get_privkey || get_policy) {
             return Err(ERR_INVALID_ARGUMENTS); /* must request at least one kind of BLOB! */
         }
@@ -445,19 +397,9 @@ impl FapiContext {
         let mut blob_size: usize = 0;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetEsysBlob(
-                context,
-                cstr_path.as_ptr(),
-                &mut blob_type,
-                &mut blob_data,
-                &mut blob_size,
-            )
+            fapi_sys::Fapi_GetEsysBlob(context, cstr_path.as_ptr(), &mut blob_type, &mut blob_data, &mut blob_size)
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(blob_data, blob_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_raw(blob_data, blob_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
         .and_then(|esys_blob| {
             BlobType::try_from(blob_type)
                 .map(|type_flag| (type_flag, esys_blob))
@@ -508,39 +450,24 @@ impl FapiContext {
     /// ###### Return Value
     ///
     /// **`(nv_data, Option(log_data))`**
-    pub fn nv_read(
-        &mut self,
-        nv_path: &str,
-        request_log: bool,
-    ) -> Result<(Vec<u8>, Option<JsonValue>), ErrorCode> {
+    pub fn nv_read(&mut self, nv_path: &str, request_log: bool) -> Result<(Vec<u8>, Option<JsonValue>), ErrorCode> {
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let mut data: *mut u8 = ptr::null_mut();
         let mut size: usize = 0;
         let mut logs: *mut c_char = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvRead(
-                context,
-                cstr_path.as_ptr(),
-                &mut data,
-                &mut size,
-                cond_out(&mut logs, request_log),
-            )
+            fapi_sys::Fapi_NvRead(context, cstr_path.as_ptr(), &mut data, &mut size, cond_out(&mut logs, request_log))
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(data, size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
-        .and_then(|result| Ok((result, FapiMemoryHolder::from_str(logs).to_json())))
+        .and_then(|_| FapiMemoryHolder::from_raw(data, size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+        .map(|result| (result, FapiMemoryHolder::from_str(logs).to_json()))
     }
 
     /// Convenience function to [`nv_read()`](FapiContext::nv_read) an **`u64`** value. Assumes "big endian" byte order.
     ///
     /// *See also:* [`Fapi_NvRead()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___nv_read.html)
     pub fn nv_read_u64(&mut self, nv_path: &str) -> Result<u64, ErrorCode> {
-        self.nv_read(nv_path, false)
-            .map(|data| u64_from_be(&data.0[..]))
+        self.nv_read(nv_path, false).map(|data| u64_from_be(&data.0[..]))
     }
 
     /// Writes data to an "ordinary" (i.e *not* pin, extend or counter) NV index.
@@ -568,9 +495,7 @@ impl FapiContext {
     pub fn nv_increment(&mut self, nv_path: &str) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(nv_path)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvIncrement(context, cstr_path.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvIncrement(context, cstr_path.as_ptr()) })
     }
 
     /// Sets bits in an NV index that was created as a bit field. Any number of bits from 0 to 64 may be SET.
@@ -579,33 +504,20 @@ impl FapiContext {
     pub fn nv_set_bits(&mut self, nv_path: &str, bitmap: u64) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(nv_path)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvSetBits(context, cstr_path.as_ptr(), bitmap)
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvSetBits(context, cstr_path.as_ptr(), bitmap) })
     }
 
     /// Performs an extend operation on an NV index that was created as "pcr" type.
     ///
     /// *See also:* [`Fapi_NvExtend()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___nv_extend.html)
-    pub fn nv_extend(
-        &mut self,
-        nv_path: &str,
-        data: &[u8],
-        log_data: Option<&JsonValue>,
-    ) -> Result<(), ErrorCode> {
+    pub fn nv_extend(&mut self, nv_path: &str, data: &[u8], log_data: Option<&JsonValue>) -> Result<(), ErrorCode> {
         fail_if_empty!(data);
 
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvExtend(
-                context,
-                cstr_path.as_ptr(),
-                data.as_ptr(),
-                data.len(),
-                cstr_logs.as_ptr(),
-            )
+            fapi_sys::Fapi_NvExtend(context, cstr_path.as_ptr(), data.as_ptr(), data.len(), cstr_logs.as_ptr())
         })
     }
 
@@ -628,24 +540,13 @@ impl FapiContext {
     /// Performs an extend operation on a given PCR.
     ///
     /// *See also:* [`Fapi_PcrExtend()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___pcr_extend.html)
-    pub fn pcr_extend(
-        &mut self,
-        pcr_no: u32,
-        data: &[u8],
-        log_data: Option<&str>,
-    ) -> Result<(), ErrorCode> {
+    pub fn pcr_extend(&mut self, pcr_no: u32, data: &[u8], log_data: Option<&str>) -> Result<(), ErrorCode> {
         fail_if_empty!(data);
 
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_PcrExtend(
-                context,
-                pcr_no,
-                data.as_ptr(),
-                data.len(),
-                cstr_logs.as_ptr(),
-            )
+            fapi_sys::Fapi_PcrExtend(context, pcr_no, data.as_ptr(), data.len(), cstr_logs.as_ptr())
         })
     }
 
@@ -658,30 +559,16 @@ impl FapiContext {
     /// ###### Return Value
     ///
     /// **`(pcr_value, Option(prc_log))`**
-    pub fn pcr_read(
-        &mut self,
-        pcr_no: u32,
-        request_log: bool,
-    ) -> Result<(Vec<u8>, Option<JsonValue>), ErrorCode> {
+    pub fn pcr_read(&mut self, pcr_no: u32, request_log: bool) -> Result<(Vec<u8>, Option<JsonValue>), ErrorCode> {
         let mut pcr_data: *mut u8 = ptr::null_mut();
         let mut pcr_size: usize = 0usize;
         let mut log_data: *mut c_char = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_PcrRead(
-                context,
-                pcr_no,
-                &mut pcr_data,
-                &mut pcr_size,
-                cond_out(&mut log_data, request_log),
-            )
+            fapi_sys::Fapi_PcrRead(context, pcr_no, &mut pcr_data, &mut pcr_size, cond_out(&mut log_data, request_log))
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(pcr_data, pcr_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
-        .and_then(|result| Ok((result, FapiMemoryHolder::from_str(log_data).to_json())))
+        .and_then(|_| FapiMemoryHolder::from_raw(pcr_data, pcr_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+        .map(|result| (result, FapiMemoryHolder::from_str(log_data).to_json()))
     }
 
     /// Given a set of PCRs and a restricted signing key, it will sign those PCRs and return the quote.
@@ -703,7 +590,7 @@ impl FapiContext {
         qualifying_data: Option<&[u8]>,
         request_log: bool,
         request_cert: bool,
-    ) -> Result<(JsonValue, Vec<u8>, Option<JsonValue>, Option<String>), ErrorCode> {
+    ) -> Result<QuoteResult, ErrorCode> {
         fail_if_empty!(pcr_no);
         fail_if_opt_empty!(quote_type, qualifying_data);
 
@@ -732,24 +619,20 @@ impl FapiContext {
                 cond_out(&mut certificate, request_cert),
             )
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_str(quote_info)
-                .to_json()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_str(quote_info).to_json().ok_or(ERR_NO_RESULT_DATA))
         .and_then(|info| {
             FapiMemoryHolder::from_raw(signature_data, signature_size)
                 .to_vec()
                 .map(|data| (info, data))
                 .ok_or(ERR_NO_RESULT_DATA)
         })
-        .and_then(|signature| {
-            Ok((
+        .map(|signature| {
+            (
                 signature.0,
                 signature.1,
                 FapiMemoryHolder::from_str(pcr_log).to_json(),
                 FapiMemoryHolder::from_str(certificate).to_string(),
-            ))
+            )
         })
     }
 
@@ -818,11 +701,7 @@ impl FapiContext {
                 &mut ciphertext_size,
             )
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(ciphertext_data, ciphertext_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_raw(ciphertext_data, ciphertext_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
 
     /// Decrypts data that was previously encrypted with [`encrypt()`](FapiContext::decrypt).
@@ -846,11 +725,7 @@ impl FapiContext {
                 &mut plaintext_size,
             )
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(plaintext_data, plaintext_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_raw(plaintext_data, plaintext_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -875,7 +750,7 @@ impl FapiContext {
         digest: &[u8],
         get_pubkey: bool,
         get_cert: bool,
-    ) -> Result<(Vec<u8>, Option<String>, Option<String>), ErrorCode> {
+    ) -> Result<SignResult, ErrorCode> {
         fail_if_empty!(digest);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
@@ -899,11 +774,7 @@ impl FapiContext {
                 cond_out(&mut signer_crt_pem, get_cert),
             )
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(signature_data, signature_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
         .map(|signature| {
             (
                 signature,
@@ -918,25 +789,13 @@ impl FapiContext {
     /// Returns `Ok(true)` if the signature is *valid*, `Ok(false)` if the signature is *invalid* (or malformed), and `Err(_)` if an error other than the signature value being invalid (or malformed) occurred during the verification process.
     ///
     /// *See also:* [`Fapi_VerifySignature()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___verify_signature.html)
-    pub fn verify_signature(
-        &mut self,
-        key_path: &str,
-        digest: &[u8],
-        signature: &[u8],
-    ) -> Result<bool, ErrorCode> {
+    pub fn verify_signature(&mut self, key_path: &str, digest: &[u8], signature: &[u8]) -> Result<bool, ErrorCode> {
         fail_if_empty!(digest, signature);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_VerifySignature(
-                context,
-                cstr_path.as_ptr(),
-                digest.as_ptr(),
-                digest.len(),
-                signature.as_ptr(),
-                signature.len(),
-            )
+            fapi_sys::Fapi_VerifySignature(context, cstr_path.as_ptr(), digest.as_ptr(), digest.len(), signature.as_ptr(), signature.len())
         })
         .map(|_| true)
         .or_else(|error| match error {
@@ -992,18 +851,9 @@ impl FapiContext {
         let mut sealed_data: *mut u8 = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Unseal(
-                context,
-                cstr_path.as_ptr(),
-                &mut sealed_data,
-                &mut sealed_size,
-            )
+            fapi_sys::Fapi_Unseal(context, cstr_path.as_ptr(), &mut sealed_data, &mut sealed_size)
         })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(sealed_data, sealed_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        .and_then(|_| FapiMemoryHolder::from_raw(sealed_data, sealed_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1020,7 +870,7 @@ impl FapiContext {
         self.fapi_call(false, |context| unsafe {
             fapi_sys::Fapi_GetCertificate(context, cstr_path.as_ptr(), &mut cert_data_pem)
         })
-        .and_then(|_| Ok(FapiMemoryHolder::from_str(cert_data_pem).to_string()))
+        .map(|_| FapiMemoryHolder::from_str(cert_data_pem).to_string())
         .or_else(|error| match error {
             ErrorCode::FapiError(BaseErrorCode::NoCert) => Ok(None),
             _ => Err(error),
@@ -1032,11 +882,7 @@ impl FapiContext {
     /// If the parameter `cert_data` is `None`, then an existing certificate will be removed from the entity.
     ///
     /// *See also:* [`Fapi_SetCertificate()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_certificate.html)
-    pub fn set_certificate(
-        &mut self,
-        path: &str,
-        cert_data: Option<&str>,
-    ) -> Result<(), ErrorCode> {
+    pub fn set_certificate(&mut self, path: &str, cert_data: Option<&str>) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_cert = CStringHolder::try_from(cert_data)?;
 
@@ -1053,11 +899,7 @@ impl FapiContext {
         let mut certificate_data: *mut u8 = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetPlatformCertificates(
-                context,
-                &mut certificate_data,
-                &mut certificate_size,
-            )
+            fapi_sys::Fapi_GetPlatformCertificates(context, &mut certificate_data, &mut certificate_size)
         })
         .and_then(|_| {
             FapiMemoryHolder::from_raw(certificate_data, certificate_size)
@@ -1085,7 +927,7 @@ impl FapiContext {
         self.fapi_call(false, |context| unsafe {
             fapi_sys::Fapi_GetDescription(context, cstr_path.as_ptr(), &mut description)
         })
-        .and_then(|_| Ok(FapiMemoryHolder::from_str(description).to_string()))
+        .map(|_| FapiMemoryHolder::from_str(description).to_string())
     }
 
     /// Allows an application to assign a human readable description to an object in the metadata store.
@@ -1093,11 +935,7 @@ impl FapiContext {
     /// If the parameter `description` is `None`, then any stored description assigned to the referenced object is deleted.
     ///
     /// *See also:* [`Fapi_SetDescription()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_description.html)
-    pub fn set_description(
-        &mut self,
-        path: &str,
-        description: Option<&str>,
-    ) -> Result<(), ErrorCode> {
+    pub fn set_description(&mut self, path: &str, description: Option<&str>) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_desc = CStringHolder::try_from(description)?;
 
@@ -1115,14 +953,9 @@ impl FapiContext {
         let mut app_data_buff: *mut u8 = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetAppData(
-                context,
-                cstr_path.as_ptr(),
-                &mut app_data_buff,
-                &mut app_data_size,
-            )
+            fapi_sys::Fapi_GetAppData(context, cstr_path.as_ptr(), &mut app_data_buff, &mut app_data_size)
         })
-        .and_then(|_| Ok(FapiMemoryHolder::from_raw(app_data_buff, app_data_size).to_vec()))
+        .map(|_| FapiMemoryHolder::from_raw(app_data_buff, app_data_size).to_vec())
     }
 
     /// Associates an arbitrary data blob with a given object.
@@ -1135,12 +968,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetAppData(
-                context,
-                cstr_path.as_ptr(),
-                opt_to_ptr(app_data),
-                opt_to_len(app_data),
-            )
+            fapi_sys::Fapi_SetAppData(context, cstr_path.as_ptr(), opt_to_ptr(app_data), opt_to_len(app_data))
         })
     }
 
@@ -1155,15 +983,13 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut list: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_List(context, cstr_path.as_ptr(), &mut list)
-        })
-        .and_then(|_| {
-            FapiMemoryHolder::from_str(list)
-                .to_string()
-                .map(|str| str.split(':').map(str::to_owned).collect())
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_List(context, cstr_path.as_ptr(), &mut list) })
+            .and_then(|_| {
+                FapiMemoryHolder::from_str(list)
+                    .to_string()
+                    .map(|str| str.split(':').map(str::to_owned).collect())
+                    .ok_or(ERR_NO_RESULT_DATA)
+            })
     }
 
     /// Deletes a given key, policy or NV index from the system.
@@ -1172,9 +998,7 @@ impl FapiContext {
     pub fn delete(&mut self, path: &str) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(path)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Delete(context, cstr_path.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_Delete(context, cstr_path.as_ptr()) })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1198,12 +1022,7 @@ impl FapiContext {
     /// If a current policy happens to be a PolicyAuthorize, then for it to be used, the user must first satisfy a policy authorized by a having been signed (and made into a ticket) by an authorized party.
     ///
     /// *See also:* [`Fapi_AuthorizePolicy()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___authorize_policy.html)
-    pub fn authorize_policy(
-        &mut self,
-        pol_path: &str,
-        key_path: &str,
-        ref_data: Option<&[u8]>,
-    ) -> Result<(), ErrorCode> {
+    pub fn authorize_policy(&mut self, pol_path: &str, key_path: &str, ref_data: Option<&[u8]>) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(ref_data);
 
         let cstr_path_pol = CStringHolder::try_from(pol_path)?;
@@ -1230,10 +1049,8 @@ impl FapiContext {
     pub fn get_tcti(&mut self) -> Result<TctiOpaqueContextBlob, ErrorCode> {
         let mut tcti: *mut fapi_sys::TSS2_TCTI_CONTEXT = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetTcti(context, &mut tcti)
-        })
-        .and_then(|_| Ok(tcti as TctiOpaqueContextBlob))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) })
+            .map(|_| tcti as TctiOpaqueContextBlob)
     }
 
     /// Returns an array of handles that can be polled on to get notified when data from the TPM or from a disk operation is available.
@@ -1294,10 +1111,7 @@ impl NativeContextHolder {
     }
 
     pub fn get(&self) -> *mut FAPI_CONTEXT {
-        assert!(
-            self.native_context != ptr::null_mut(),
-            "FAPI_CONTEXT is a NULL pointer!"
-        );
+        assert!(!self.native_context.is_null(), "FAPI_CONTEXT is a NULL pointer!");
         self.native_context
     }
 }
@@ -1329,12 +1143,10 @@ unsafe extern "C" fn auth_callback_entrypoint(
     auth: *mut *const c_char,
     user_data: *mut c_void,
 ) -> TSS2_RC {
-    if object_path == ptr::null() || auth == ptr::null_mut() || user_data == ptr::null_mut() {
+    if object_path.is_null() || auth.is_null() || user_data.is_null() {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (&mut *(user_data as *mut AuthCallback))
-        .invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(description))
-    {
+    match (*(user_data as *mut AuthCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
         Some(auth_value) => {
             *auth = auth_value.as_ptr();
             TSS2_RC_SUCCESS
@@ -1356,18 +1168,18 @@ unsafe extern "C" fn sign_callback_entrypoint(
     signature_size: *mut usize,
     user_data: *mut c_void,
 ) -> TSS2_RC {
-    if object_path == ptr::null()
-        || public_key == ptr::null()
+    if object_path.is_null()
+        || public_key.is_null()
         || hash_alg == 0u32
-        || challenge_data == ptr::null()
+        || challenge_data.is_null()
         || challenge_size == 0usize
-        || signature_data == ptr::null_mut()
-        || signature_size == ptr::null_mut()
-        || user_data == ptr::null_mut()
+        || signature_data.is_null()
+        || signature_size.is_null()
+        || user_data.is_null()
     {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (&mut *(user_data as *mut SignCallback)).invoke(
+    match (*(user_data as *mut SignCallback)).invoke(
         CStr::from_ptr(object_path),
         ptr_to_opt_cstr(description),
         CStr::from_ptr(public_key),
@@ -1393,15 +1205,10 @@ unsafe extern "C" fn branch_callback_entrypoint(
     selected: *mut usize,
     user_data: *mut c_void,
 ) -> TSS2_RC {
-    if object_path == ptr::null()
-        || branch_names == ptr::null_mut()
-        || num_branches == 0usize
-        || selected == ptr::null_mut()
-        || user_data == ptr::null_mut()
-    {
+    if object_path.is_null() || branch_names.is_null() || num_branches == 0usize || selected.is_null() || user_data.is_null() {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (&mut *(user_data as *mut BranCallback)).invoke(
+    match (*(user_data as *mut BranCallback)).invoke(
         CStr::from_ptr(object_path),
         ptr_to_opt_cstr(description),
         &ptr_to_cstr_vec(branch_names, num_branches)[..],
@@ -1415,17 +1222,11 @@ unsafe extern "C" fn branch_callback_entrypoint(
 }
 
 /// Invokes the actual ActnCallback struct
-unsafe extern "C" fn action_callback_entrypoint(
-    object_path: *const c_char,
-    action: *const c_char,
-    user_data: *mut c_void,
-) -> TSS2_RC {
-    if object_path == ptr::null() || user_data == ptr::null_mut() {
+unsafe extern "C" fn action_callback_entrypoint(object_path: *const c_char, action: *const c_char, user_data: *mut c_void) -> TSS2_RC {
+    if object_path.is_null() || user_data.is_null() {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (&mut *(user_data as *mut ActnCallback))
-        .invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(action))
-    {
+    match (*(user_data as *mut ActnCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
         true => TSS2_RC_SUCCESS,
         _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
     }

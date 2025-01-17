@@ -36,18 +36,14 @@ fn test_provision() {
         };
 
         // Set up auth callback
-        if let Err(error) =
-            context.set_auth_callback(tss2_fapi_rs::AuthCallback::new(my_auth_callback))
-        {
+        if let Err(error) = context.set_auth_callback(tss2_fapi_rs::AuthCallback::new(my_auth_callback)) {
             panic!("Setting up the callback has failed: {:?}", error)
         }
 
         // Initialize TPM, if not already initialized
         match context.provision(None, Some(PASSWORD), None) {
             Ok(_) => log::debug!("Provisioned."),
-            Err(tss2_fapi_rs::ErrorCode::FapiError(
-                tss2_fapi_rs::BaseErrorCode::AlreadyProvisioned,
-            )) => log::debug!("TPM already provisioned -> skipping."),
+            Err(tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::AlreadyProvisioned)) => log::debug!("TPM already provisioned -> skipping."),
             Err(error) => panic!("Provisioning has failed: {:?}", error),
         }
     });
@@ -64,20 +60,15 @@ fn test_to_destruction() {
     repeat_test!(|i| {
         // Capture initial memory usage
         let initial_memory_usage = memory_stats().expect("Failed to fetch initial memory stats!");
-        debug!(
-            "Initial memory usage: {} bytes",
-            initial_memory_usage.virtual_mem
-        );
+        debug!("Initial memory usage: {} bytes", initial_memory_usage.virtual_mem);
 
         // Create context and attempt provision repeatedly to check for possible memory leaks
         const LOOP_COUNT: usize = 99_991_usize;
         let mut previous_update: Option<Instant> = None;
         for j in 0..LOOP_COUNT {
-            if log::log_enabled!(Level::Info) {
-                if previous_update.map_or(true, |ts| ts.elapsed().as_secs() >= 5u64) {
-                    output_progress(j, LOOP_COUNT);
-                    previous_update = Some(Instant::now());
-                }
+            if log::log_enabled!(Level::Info) && previous_update.map_or(true, |ts| ts.elapsed().as_secs() >= 5u64) {
+                output_progress(j, LOOP_COUNT);
+                previous_update = Some(Instant::now());
             }
             let mut context = match FapiContext::new() {
                 Ok(fpai_ctx) => fpai_ctx,
@@ -91,22 +82,13 @@ fn test_to_destruction() {
 
         // Capture final memory usage
         let final_memory_usage = memory_stats().expect("Failed to fetch final memory stats!");
-        debug!(
-            "Final memory usage: {} bytes",
-            final_memory_usage.virtual_mem
-        );
+        debug!("Final memory usage: {} bytes", final_memory_usage.virtual_mem);
 
         // Detect number of "leaked" bytes
-        let leaked_bytes = final_memory_usage
-            .virtual_mem
-            .saturating_sub(initial_memory_usage.virtual_mem);
+        let leaked_bytes = final_memory_usage.virtual_mem.saturating_sub(initial_memory_usage.virtual_mem);
         log::debug!("Leaked bytes: {}", leaked_bytes);
         if i > 0_usize {
-            assert!(
-                leaked_bytes < 4096_usize,
-                "Memory leak detected! ({} bytes leaked)",
-                leaked_bytes
-            );
+            assert!(leaked_bytes < 4096_usize, "Memory leak detected! ({} bytes leaked)", leaked_bytes);
         }
     });
 }

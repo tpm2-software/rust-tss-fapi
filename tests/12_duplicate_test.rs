@@ -54,13 +54,13 @@ fn test_duplicate_key() {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // Create parent key #1, if not already created
-        match context.create_key(&crypt_key1, Some(PARENT_KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(crypt_key1, Some(PARENT_KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Create parent key #2, if not already created
-        match context.create_key(&crypt_key2, Some(PARENT_KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(crypt_key2, Some(PARENT_KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -70,7 +70,7 @@ fn test_duplicate_key() {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // Export public key
-        let json_public_key = match context.export_key(&crypt_key2, None) {
+        let json_public_key = match context.export_key(crypt_key2, None) {
             Ok(exported) => exported,
             Err(error) => panic!("Key export (public) has failed: {:?}", error),
         };
@@ -80,7 +80,7 @@ fn test_duplicate_key() {
         assert!(!json_public_key.is_empty());
 
         // Import public key
-        match context.import(&new_parent, &json_public_key) {
+        match context.import(new_parent, &json_public_key) {
             Ok(_) => debug!("Key imported."),
             Err(error) => panic!("Failed to import the key: {:?}", error),
         };
@@ -99,7 +99,7 @@ fn test_duplicate_key() {
         };
 
         // Create the exportable key, if not already created
-        match context.create_key(&child_key1, Some(EXPORT_KEY_FLAGS), Some(dup_policy), None) {
+        match context.create_key(child_key1, Some(EXPORT_KEY_FLAGS), Some(dup_policy), None) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -109,7 +109,7 @@ fn test_duplicate_key() {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // Export private key
-        let json_wrapped_key = match context.export_key(&child_key1, Some(&new_parent)) {
+        let json_wrapped_key = match context.export_key(child_key1, Some(new_parent)) {
             Ok(exported) => exported,
             Err(error) => panic!("Key export (private) has failed: {:?}", error),
         };
@@ -123,18 +123,16 @@ fn test_duplicate_key() {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // Import wrapped key
-        match context.import(&child_key2, &json_wrapped_key) {
+        match context.import(child_key2, &json_wrapped_key) {
             Ok(_) => debug!("Key imported."),
             Err(error) => panic!("Failed to import the key: {:?}", error),
         };
 
         // Enumerate keys
-        match context.list(&crypt_key2) {
+        match context.list(crypt_key2) {
             Ok(mut list) => {
                 let duplicated_key = format!("{}/{}", &crypt_key2, child_key2).to_ascii_lowercase();
-                assert!(list
-                    .drain(..)
-                    .any(|entry| entry.to_ascii_lowercase().ends_with(&duplicated_key[..])));
+                assert!(list.drain(..).any(|entry| entry.to_ascii_lowercase().ends_with(&duplicated_key[..])));
             }
             Err(error) => panic!("Failed to enumerate the keys: {:?}", error),
         };

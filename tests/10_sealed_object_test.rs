@@ -48,14 +48,7 @@ fn test_create_seal() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new seal, if not already created
-        match context.create_seal(
-            &key_path,
-            Some(SEAL_TYPE_FLAGS),
-            NonZeroUsize::new(32usize).unwrap(),
-            None,
-            None,
-            None,
-        ) {
+        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), NonZeroUsize::new(32usize).unwrap(), None, None, None) {
             Ok(_) => debug!("Seal created."),
             Err(error) => panic!("Seal creation has failed: {:?}", error),
         }
@@ -89,7 +82,7 @@ fn test_unseal() {
 
         // Create new seal, if not already created
         match context.create_seal(
-            &key_path,
+            key_path,
             Some(SEAL_TYPE_FLAGS),
             NonZeroUsize::new(original_data.len()).unwrap(),
             None,
@@ -101,7 +94,7 @@ fn test_unseal() {
         }
 
         // Unseal data
-        let unsealed_data = match context.unseal(&key_path) {
+        let unsealed_data = match context.unseal(key_path) {
             Ok(data) => data,
             Err(error) => panic!("Unseal operation has failed: {:?}", error),
         };
@@ -111,6 +104,6 @@ fn test_unseal() {
         debug!("Unsealed data: {}", hex::encode(&unsealed_data[..]));
 
         // Verify
-        assert!((&unsealed_data[..]).eq(&original_data[..]));
+        assert!(unsealed_data[..].eq(&original_data[..]));
     });
 }

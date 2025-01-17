@@ -59,7 +59,7 @@ fn test_multiple_threads() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -93,16 +93,13 @@ fn test_multiple_threads() {
                     thread_barrier.wait();
 
                     // Compute digest to be signed
-                    let digest = Sha256::digest(
-                        format!("{:?}\\{:08X}", tid, thread_rng.next_u64()).as_bytes(),
-                    );
+                    let digest = Sha256::digest(format!("{:?}\\{:08X}", tid, thread_rng.next_u64()).as_bytes());
                     debug!("Digest to be signed: {}", hex::encode(&digest[..]));
 
                     // Lock the mutex and create the signature
                     let signature = {
                         let mut mutex_guard = thread_context.lock().unwrap();
-                        match mutex_guard.sign(&thread_keypath, padding_algo, &digest, false, false)
-                        {
+                        match mutex_guard.sign(&thread_keypath, padding_algo, &digest, false, false) {
                             Ok(value) => value,
                             Err(error) => panic!("Failed to create the signature: {:?}", error),
                         }
@@ -116,11 +113,7 @@ fn test_multiple_threads() {
                     // Lock the mutex (again) and verify the signature
                     let verify_result = {
                         let mut mutex_guard = thread_context.lock().unwrap();
-                        match mutex_guard.verify_signature(
-                            &thread_keypath,
-                            &digest,
-                            &signature.0[..],
-                        ) {
+                        match mutex_guard.verify_signature(&thread_keypath, &digest, &signature.0[..]) {
                             Ok(value) => value,
                             Err(error) => panic!("Failed to verify the signature: {:?}", error),
                         }

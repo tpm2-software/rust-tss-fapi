@@ -6,8 +6,6 @@
 
 pub mod common;
 
-use std::ptr;
-
 use common::{param::PASSWORD, setup::TestConfiguration};
 use function_name::named;
 use log::debug;
@@ -48,6 +46,6 @@ fn test_get_tcti() {
         debug!("TCTI: {:?}", tcti_context);
 
         // Verify
-        assert!(tcti_context != ptr::null_mut())
+        assert!(!tcti_context.is_null())
     });
 }

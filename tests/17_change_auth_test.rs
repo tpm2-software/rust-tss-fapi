@@ -50,7 +50,7 @@ fn test_change_auth() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -59,7 +59,7 @@ fn test_change_auth() {
         let new_password = generate_string::<12usize>(&mut rng);
 
         // Change auth value
-        match context.change_auth(&key_path, Some(&new_password[..])) {
+        match context.change_auth(key_path, Some(&new_password[..])) {
             Ok(_) => debug!("Auth value changed successfully."),
             Err(error) => panic!("Changing the auth value has failed: {:?}", error),
         }
@@ -86,13 +86,13 @@ fn test_remove_auth() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Change auth value
-        match context.change_auth(&key_path, None) {
+        match context.change_auth(key_path, None) {
             Ok(_) => debug!("Auth value removed."),
             Err(error) => panic!("Removing the auth value has failed: {:?}", error),
         }

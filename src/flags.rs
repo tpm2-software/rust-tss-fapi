@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 use crate::{ErrorCode, InternalError};
-use std::{borrow::Cow, collections::BTreeSet, fmt::Debug, num::NonZeroU32, usize};
+use std::{borrow::Cow, collections::BTreeSet, fmt::Debug, num::NonZeroU32};
 
 // ==========================================================================
 // Flags trait
@@ -121,13 +121,8 @@ impl Flags<Self> for NvFlags {
     }
 
     fn validate(list: &[Self]) -> bool {
-        list.into_iter()
-            .map(|flag| match flag {
-                Self::BitField => true,
-                Self::Counter => true,
-                Self::PCR => true,
-                _ => false,
-            })
+        list.iter()
+            .map(|flag| matches!(flag, Self::BitField | Self::Counter | Self::PCR))
             .map(usize::from)
             .sum::<usize>()
             < 2usize
@@ -263,15 +258,11 @@ impl TryFrom<u8> for BlobType {
 // Helper functions
 // ==========================================================================
 
-pub(crate) fn flags_to_string<T: Flags<T> + Ord + Debug + Copy>(
-    list: Option<&[T]>,
-) -> Result<Option<String>, ErrorCode> {
+pub(crate) fn flags_to_string<T: Flags<T> + Ord + Debug + Copy>(list: Option<&[T]>) -> Result<Option<String>, ErrorCode> {
     match list {
         Some(flags) => {
             if flags.is_empty() || contains_duplicates(flags) || (!T::validate(flags)) {
-                Err(crate::ErrorCode::InternalError(
-                    InternalError::InvalidArguments,
-                ))
+                Err(crate::ErrorCode::InternalError(InternalError::InvalidArguments))
             } else {
                 Ok(Some(
                     BTreeSet::from_iter(flags)
@@ -303,9 +294,7 @@ fn contains_duplicates<T: Flags<T> + Ord + Copy>(list: &[T]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        flags_to_string, BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags,
-    };
+    use super::{flags_to_string, BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
     use std::num::NonZeroU32;
 
     #[test]
@@ -332,25 +321,14 @@ mod tests {
 
         assert!(flags_to_string(Some(&[KeyFlags::Decrypt, KeyFlags::Decrypt])).is_err());
 
-        assert!(flags_to_string(Some(&[
-            NvFlags::BitField,
-            NvFlags::Index(index),
-            NvFlags::NoDA,
-            NvFlags::System
-        ]))
-        .is_ok());
+        assert!(flags_to_string(Some(&[NvFlags::BitField, NvFlags::Index(index), NvFlags::NoDA, NvFlags::System])).is_ok());
 
         assert!(flags_to_string(Some(&[NvFlags::BitField, NvFlags::Counter])).is_err());
         assert!(flags_to_string(Some(&[NvFlags::BitField, NvFlags::PCR])).is_err());
         assert!(flags_to_string(Some(&[NvFlags::Counter, NvFlags::PCR])).is_err());
         assert!(flags_to_string(Some(&[NvFlags::BitField, NvFlags::BitField])).is_err());
 
-        assert!(flags_to_string(Some(&[
-            SealFlags::NoDA,
-            SealFlags::Index(index),
-            SealFlags::System
-        ]))
-        .is_ok());
+        assert!(flags_to_string(Some(&[SealFlags::NoDA, SealFlags::Index(index), SealFlags::System])).is_ok());
 
         assert!(flags_to_string(Some(&[SealFlags::NoDA, SealFlags::NoDA])).is_err());
 

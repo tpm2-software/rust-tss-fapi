@@ -15,8 +15,7 @@ use std::{
 #[cfg(unix)]
 use libc::explicit_bzero;
 
-const INVALID_ARGUMENTS: ErrorCode =
-    ErrorCode::InternalError(crate::InternalError::InvalidArguments);
+const INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(crate::InternalError::InvalidArguments);
 
 // ==========================================================================
 // Helper macros
@@ -51,9 +50,7 @@ pub struct CStringHolder {
 impl CStringHolder {
     /// Returns a pointer to the wrapped NUL-terminated string, which is guaranteed to remain valid until the `CStringHolder` instance is dropped.
     pub fn as_ptr(&self) -> *const c_char {
-        self.str_data
-            .as_ref()
-            .map_or(ptr::null(), |str| str.as_ptr())
+        self.str_data.as_ref().map_or(ptr::null(), |str| str.as_ptr())
     }
 
     /* pub fn as_c_str(&self) -> Option<&CStr> {
@@ -152,8 +149,7 @@ impl TryFrom<Option<Cow<'static, str>>> for CStringHolder {
     fn try_from(opt_str: Option<Cow<'static, str>>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_str);
         Ok(Self {
-            str_data: opt_str
-                .map(|str| cstring_from_cow(str).expect("Failed to allocate CString!")),
+            str_data: opt_str.map(|str| cstring_from_cow(str).expect("Failed to allocate CString!")),
         })
     }
 }
@@ -165,8 +161,7 @@ impl TryFrom<Option<&JsonValue>> for CStringHolder {
     fn try_from(opt_json: Option<&JsonValue>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_json);
         Ok(Self {
-            str_data: opt_json
-                .map(|json| CString::new(json.to_string()).expect("Failed to allocate CString!")),
+            str_data: opt_json.map(|json| CString::new(json.to_string()).expect("Failed to allocate CString!")),
         })
     }
 }
@@ -194,17 +189,13 @@ where
     pub fn from_raw(data_ptr: *mut T, length: usize) -> Self {
         Self {
             data_ptr,
-            length: if data_ptr != ptr::null_mut() {
-                length
-            } else {
-                0usize
-            },
+            length: if !data_ptr.is_null() { length } else { 0usize },
         }
     }
 
     /// Copies the wrapped data into a new `Vec<T>`, so that it can remain valid after this `FapiMemoryHolder` instance was dropped; returns `None` if wrapped pointer is `NULL`.
     pub fn to_vec(&self) -> Option<Vec<T>> {
-        if (self.data_ptr != ptr::null_mut()) && (self.length > 0usize) {
+        if (!self.data_ptr.is_null()) && (self.length > 0usize) {
             unsafe { Some(slice::from_raw_parts(self.data_ptr, self.length).to_vec()) }
         } else {
             None
@@ -222,7 +213,7 @@ impl FapiMemoryHolder<c_char> {
     pub fn from_str(data_ptr: *mut c_char) -> Self {
         Self {
             data_ptr,
-            length: if data_ptr != ptr::null_mut() {
+            length: if !data_ptr.is_null() {
                 unsafe { CStr::from_ptr(data_ptr).count_bytes() }
             } else {
                 0usize
@@ -232,7 +223,7 @@ impl FapiMemoryHolder<c_char> {
 
     /// Copies the wrapped data into an owned `String` object, so that it can remain valid after this `FapiMemoryHolder` instance was dropped; returns `None` if wrapped pointer is `NULL`.
     pub fn to_string(&self) -> Option<String> {
-        if (self.data_ptr != ptr::null_mut()) && (self.length > 0usize) {
+        if (!self.data_ptr.is_null()) && (self.length > 0usize) {
             let result = unsafe { CStr::from_ptr(self.data_ptr).to_str() };
             match result {
                 Ok(cs) => Some(cs.to_owned()),
@@ -245,7 +236,7 @@ impl FapiMemoryHolder<c_char> {
 
     /// Parses the wrapped data into an owned `JsonValue` object, so that it can remain valid after this `FapiMemoryHolder` instance was dropped; returns `None` if wrapped pointer is `NULL` or is not pointing to valid JSON data.
     pub fn to_json(&self) -> Option<JsonValue> {
-        if (self.data_ptr != ptr::null_mut()) && (self.length > 0usize) {
+        if (!self.data_ptr.is_null()) && (self.length > 0usize) {
             let result = unsafe { CStr::from_ptr(self.data_ptr).to_str() };
             match result {
                 Ok(cs) => json::parse(cs).ok(),
@@ -262,7 +253,7 @@ where
     T: Sized + Clone,
 {
     fn drop(&mut self) {
-        if self.data_ptr != ptr::null_mut() {
+        if !self.data_ptr.is_null() {
             erase_memory(self.data_ptr, self.length);
             unsafe {
                 fapi_sys::Fapi_Free(self.data_ptr as *mut c_void);
@@ -278,7 +269,7 @@ where
 
 /// Create a string from a `c_char` pointer, will be `None` iff the pointer is a `NULL` pointer.
 pub fn ptr_to_opt_cstr<'a>(str_ptr: *const c_char) -> Option<&'a CStr> {
-    if str_ptr != ptr::null() {
+    if !str_ptr.is_null() {
         unsafe { Some(CStr::from_ptr(str_ptr)) }
     } else {
         None
@@ -289,7 +280,7 @@ pub fn ptr_to_opt_cstr<'a>(str_ptr: *const c_char) -> Option<&'a CStr> {
 pub fn ptr_to_cstr_vec<'a>(str_ptr: *mut *const c_char, count: usize) -> Vec<&'a CStr> {
     unsafe {
         let list: &[*const c_char] = slice::from_raw_parts(str_ptr, count);
-        list.into_iter().map(|ptr| CStr::from_ptr(*ptr)).collect()
+        list.iter().map(|ptr| CStr::from_ptr(*ptr)).collect()
     }
 }
 

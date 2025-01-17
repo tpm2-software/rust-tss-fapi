@@ -51,7 +51,7 @@ fn test_encrypt() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_ENCR), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_ENCR), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -95,7 +95,7 @@ fn test_decrypt() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_ENCR), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_ENCR), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -121,6 +121,6 @@ fn test_decrypt() {
 
         // Validate the ciphertext
         debug!("Decrypted: {}", hex::encode(&decrypted[..]));
-        assert!((&decrypted[..]).eq(&plaintext[..]));
+        assert!(decrypted[..].eq(&plaintext[..]));
     });
 }

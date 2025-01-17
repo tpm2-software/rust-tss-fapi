@@ -16,9 +16,12 @@ use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug};
 ///
 /// Regsitered to a FAPI context via the [`set_auth_callback()`](crate::FapiContext::set_auth_callback) function.
 pub struct AuthCallback {
-    auth_fn: Box<dyn Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + Send>,
+    auth_fn: Box<AuthCallbackFunction>,
     auth_value: Option<CStringHolder>,
 }
+
+/// Signature of the wrapped [`AuthCallback`] function
+type AuthCallbackFunction = dyn Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + Send;
 
 /// Wraps the parameters to be passed to the [`AuthCallback`] callback.
 #[derive(Debug)]
@@ -33,9 +36,7 @@ impl AuthCallback {
     /// Creates a new callback instance.
     ///
     /// The supplied `auth_fn` will be called whenever the FAPI requests authorization values from the application. This function receives an [`AuthCallbackParam`] as parameter; it shall return `Some(value)`, if an authorization value for the requested object is provided by the application, or `None`, if **no** authorization value is provided.
-    pub fn new(
-        auth_fn: impl Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + 'static + Send,
-    ) -> Self {
+    pub fn new(auth_fn: impl Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + 'static + Send) -> Self {
         Self {
             auth_fn: Box::new(auth_fn),
             auth_value: None,
@@ -47,19 +48,12 @@ impl AuthCallback {
     /// The supplied `auth_fn` will be called whenever the FAPI requests authorization values from the application. This function receives an [`AuthCallbackParam`] as parameter; it shall return `Some(value)`, if an authorization value for the requested object is provided by the application, or `None`, if **no** authorization value is provided.
     ///
     /// The application-defined `extra_data` argument will be passed to each invocation of `auth_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(
-        sign_fn: impl Fn(AuthCallbackParam, &T) -> Option<Cow<'static, str>> + 'static + Send,
-        extra_data: T,
-    ) -> Self {
+    pub fn with_data<T: 'static + Send>(sign_fn: impl Fn(AuthCallbackParam, &T) -> Option<Cow<'static, str>> + 'static + Send, extra_data: T) -> Self {
         Self::new(move |callback_param| sign_fn(callback_param, &extra_data))
     }
 
     /// Request authorization value for the specified TPM object (path) from the application.
-    pub(crate) fn invoke(
-        &mut self,
-        object_path: &CStr,
-        description: Option<&CStr>,
-    ) -> Option<&CStringHolder> {
+    pub(crate) fn invoke(&mut self, object_path: &CStr, description: Option<&CStr>) -> Option<&CStringHolder> {
         let param = AuthCallbackParam::new(object_path, description);
         trace!("AuthCallback::invoke({:?})", &param);
         match (self.auth_fn)(param) {
@@ -88,7 +82,7 @@ impl<'a> AuthCallbackParam<'a> {
 impl Debug for AuthCallback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AuthCallback")
-            .field("auth_fn", &self.auth_fn.type_id())
+            .field("auth_fn", &(*self.auth_fn).type_id())
             .field("auth_value", &self.auth_value)
             .finish()
     }
@@ -104,9 +98,12 @@ impl Debug for AuthCallback {
 ///
 /// Registered to a FAPI context via the [`set_sign_callback()`](crate::FapiContext::set_sign_callback) function.
 pub struct SignCallback {
-    sign_fn: Box<dyn Fn(SignCallbackParam) -> Option<Vec<u8>> + Send>,
+    sign_fn: Box<SignCallbackFunction>,
     sign_data: Option<Vec<u8>>,
 }
+
+/// Signature of the wrapped [`SignCallback`] function
+type SignCallbackFunction = dyn Fn(SignCallbackParam) -> Option<Vec<u8>> + Send;
 
 /// Wraps the parameters to be passed to the [`SignCallback`] callback.
 #[derive(Debug)]
@@ -141,10 +138,7 @@ impl SignCallback {
     /// The supplied `sign_fn` will be called whenever the FAPI requests a signature from the application. The purpose of this signature is to authorize a policy execution containing a *PolicySigned* element. This function receives a [`SignCallbackParam`] as parameter; it shall return `Some(value)`, if a signature value is provided by the application, or `None`, if **no** signature value is provided.
     ///
     /// The application-defined `extra_data` argument will be passed to each invocation of `sign_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(
-        sign_fn: impl Fn(SignCallbackParam, &T) -> Option<Vec<u8>> + 'static + Send,
-        extra_data: T,
-    ) -> Self {
+    pub fn with_data<T: 'static + Send>(sign_fn: impl Fn(SignCallbackParam, &T) -> Option<Vec<u8>> + 'static + Send, extra_data: T) -> Self {
         Self::new(move |callback_param| sign_fn(callback_param, &extra_data))
     }
 
@@ -158,19 +152,12 @@ impl SignCallback {
         hash_algo: u32,
         challenge: &[u8],
     ) -> Option<&[u8]> {
-        let param = SignCallbackParam::new(
-            object_path,
-            description,
-            public_key,
-            key_hint,
-            hash_algo,
-            challenge,
-        );
+        let param = SignCallbackParam::new(object_path, description, public_key, key_hint, hash_algo, challenge);
         trace!("SignCallback::invoke({:?})", &param);
         match (self.sign_fn)(param) {
             Some(value) => {
                 self.sign_data = Some(value);
-                self.sign_data.as_ref().map(Vec::as_slice)
+                self.sign_data.as_deref()
             }
             _ => None,
         }
@@ -204,7 +191,7 @@ impl<'a> SignCallbackParam<'a> {
 impl Debug for SignCallback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SignCallback")
-            .field("sign_fn", &self.sign_fn.type_id())
+            .field("sign_fn", &(*self.sign_fn).type_id())
             .field("sign_data", &self.sign_data)
             .finish()
     }
@@ -220,8 +207,11 @@ impl Debug for SignCallback {
 ///
 /// Registered to a FAPI context via the [`set_branch_callback()`](crate::FapiContext::set_branch_callback) function.
 pub struct BranCallback {
-    bran_fn: Box<dyn Fn(BranCallbackParam) -> Option<usize> + Send>,
+    bran_fn: Box<BranCallbackFunction>,
 }
+
+/// Signature of the wrapped [`BranCallback`] function
+type BranCallbackFunction = dyn Fn(BranCallbackParam) -> Option<usize> + Send;
 
 /// Wraps the parameters to be passed to the [`BranCallback`] callback.
 #[derive(Debug)]
@@ -239,9 +229,7 @@ impl BranCallback {
     ///
     /// The supplied `bran_fn` will be called whenever a branch needs to be chosen during policy evaluation. Such choices take place when a policy contains a *PolicyOR* (with more than one branch), or a *PolicyAuthorize* (which has more than one approved policy). This function receives a [`BranCallbackParam`] as parameter; it shall return `Some(n)`, where ***n*** is the zero-based index of the chosen branch (must be less than or equal to `branches.len()-1`), or `None`, if **no** choice can be made.
     pub fn new(bran_fn: impl Fn(BranCallbackParam) -> Option<usize> + 'static + Send) -> Self {
-        Self {
-            bran_fn: Box::new(bran_fn),
-        }
+        Self { bran_fn: Box::new(bran_fn) }
     }
 
     /// Creates a new callback instance with additional data.
@@ -249,20 +237,12 @@ impl BranCallback {
     /// The supplied `bran_fn` will be called whenever a branch needs to be chosen during policy evaluation. Such choices take place when a policy contains a *PolicyOR* (with more than one branch), or a *PolicyAuthorize* (which has more than one approved policy). This function receives a [`BranCallbackParam`] as parameter; it shall return `Some(n)`, where ***n*** is the zero-based index of the chosen branch (must be less than or equal to `branches.len()-1`), or `None`, if **no** choice can be made.
     ///
     /// The application-defined `extra_data` argument will be passed to each invocation of `bran_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(
-        bran_fn: impl Fn(BranCallbackParam, &T) -> Option<usize> + 'static + Send,
-        extra_data: T,
-    ) -> Self {
+    pub fn with_data<T: 'static + Send>(bran_fn: impl Fn(BranCallbackParam, &T) -> Option<usize> + 'static + Send, extra_data: T) -> Self {
         Self::new(move |callback_param| bran_fn(callback_param, &extra_data))
     }
 
     /// Request a signature for authorizing use of TPM objects from the application.
-    pub(crate) fn invoke(
-        &mut self,
-        object_path: &CStr,
-        description: Option<&CStr>,
-        branches: &[&CStr],
-    ) -> Option<usize> {
+    pub(crate) fn invoke(&mut self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Option<usize> {
         let param = BranCallbackParam::new(object_path, description, branches);
         trace!("BranCallback::invoke({:?})", &param);
         (self.bran_fn)(param).inspect(|index| {
@@ -282,19 +262,14 @@ impl<'a> BranCallbackParam<'a> {
         Self {
             object_path: object_path.to_str().unwrap_or_default(),
             description: description.map(|str| str.to_str().unwrap_or_default()),
-            branches: branches
-                .into_iter()
-                .map(|str| str.to_str().unwrap_or_default())
-                .collect(),
+            branches: branches.iter().map(|str| str.to_str().unwrap_or_default()).collect(),
         }
     }
 }
 
 impl Debug for BranCallback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BranCallback")
-            .field("bran_fn", &self.bran_fn.type_id())
-            .finish()
+        f.debug_struct("BranCallback").field("bran_fn", &(*self.bran_fn).type_id()).finish()
     }
 }
 
@@ -308,8 +283,11 @@ impl Debug for BranCallback {
 ///
 /// Registered to a FAPI context via the [`set_policy_action_callback()`](crate::FapiContext::set_policy_action_callback) function.
 pub struct ActnCallback {
-    actn_fn: Box<dyn Fn(ActnCallbackParam) -> bool + Send>,
+    actn_fn: Box<ActnCallbackFunction>,
 }
+
+/// Signature of the wrapped [`ActnCallback`] function
+type ActnCallbackFunction = dyn Fn(ActnCallbackParam) -> bool + Send;
 
 /// Wraps the parameters to be passed to the [`ActnCallback`] callback.
 #[derive(Debug)]
@@ -325,9 +303,7 @@ impl ActnCallback {
     ///
     /// The supplied `actn_fn` will be called whenever a *PolicyAction* element is encountered during policy evaluation. The purpose and reaction to such an event is application dependent. This function receives a [`ActnCallbackParam`] as parameter.
     pub fn new(actn_fn: impl Fn(ActnCallbackParam) -> bool + 'static + Send) -> Self {
-        Self {
-            actn_fn: Box::new(actn_fn),
-        }
+        Self { actn_fn: Box::new(actn_fn) }
     }
 
     /// Creates a new callback instance with additional data.
@@ -335,10 +311,7 @@ impl ActnCallback {
     /// The supplied `actn_fn` will be called whenever a *PolicyAction* element is encountered during policy evaluation. The purpose and reaction to such an event is application dependent. This function receives a [`ActnCallbackParam`] as parameter.
     ///
     /// The application-defined `extra_data` argument will be passed to each invocation of `actn_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(
-        actn_fn: impl Fn(ActnCallbackParam, &T) -> bool + 'static + Send,
-        extra_data: T,
-    ) -> Self {
+    pub fn with_data<T: 'static + Send>(actn_fn: impl Fn(ActnCallbackParam, &T) -> bool + 'static + Send, extra_data: T) -> Self {
         Self::new(move |callback_param| actn_fn(callback_param, &extra_data))
     }
 
@@ -361,9 +334,7 @@ impl<'a> ActnCallbackParam<'a> {
 
 impl Debug for ActnCallback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ActnCallback")
-            .field("actn_fn", &self.actn_fn.type_id())
-            .finish()
+        f.debug_struct("ActnCallback").field("actn_fn", &(*self.actn_fn).type_id()).finish()
     }
 }
 

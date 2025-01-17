@@ -51,25 +51,23 @@ fn test_set_certificate() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Export public key
-        let json_public_key = match context.export_key(&key_path, None) {
+        let json_public_key = match context.export_key(key_path, None) {
             Ok(exported) => exported,
             Err(error) => panic!("Key export (public) has failed: {:?}", error),
         };
 
         // Create the certificate
-        let pem_data =
-            generate_certificate(&configuration, json_public_key, &format!("User {}", i))
-                .expect("Failed to generate certificate!");
+        let pem_data = generate_certificate(&configuration, json_public_key, &format!("User {}", i)).expect("Failed to generate certificate!");
         debug!("Certificate: {:?}", pem_data);
 
         // Set the certificate
-        match context.set_certificate(&key_path, Some(&pem_data[..])) {
+        match context.set_certificate(key_path, Some(&pem_data[..])) {
             Ok(_) => debug!("Certificate set successfully."),
             Err(error) => panic!("Setting certificate has failed: {:?}", error),
         }
@@ -96,31 +94,29 @@ fn test_get_certificate() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Export public key
-        let json_public_key = match context.export_key(&key_path, None) {
+        let json_public_key = match context.export_key(key_path, None) {
             Ok(exported) => exported,
             Err(error) => panic!("Key export (public) has failed: {:?}", error),
         };
 
         // Create the certificate
-        let pem_data =
-            generate_certificate(&configuration, json_public_key, &format!("User {}", i))
-                .expect("Failed to generate certificate!");
+        let pem_data = generate_certificate(&configuration, json_public_key, &format!("User {}", i)).expect("Failed to generate certificate!");
         debug!("Certificate: {:?}", pem_data);
 
         // Set the certificate
-        match context.set_certificate(&key_path, Some(&pem_data[..])) {
+        match context.set_certificate(key_path, Some(&pem_data[..])) {
             Ok(_) => debug!("Certificate set successfully."),
             Err(error) => panic!("Setting certificate has failed: {:?}", error),
         }
 
         // Get the certificate
-        let recovered_cert = match context.get_certificate(&key_path) {
+        let recovered_cert = match context.get_certificate(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting certificate has failed: {:?}", error),
         };
@@ -154,31 +150,29 @@ fn test_remove_certificate() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create the key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Export public key
-        let json_public_key = match context.export_key(&key_path, None) {
+        let json_public_key = match context.export_key(key_path, None) {
             Ok(exported) => exported,
             Err(error) => panic!("Key export (public) has failed: {:?}", error),
         };
 
         // Create the certificate
-        let pem_data =
-            generate_certificate(&configuration, json_public_key, &format!("User {}", i))
-                .expect("Failed to generate certificate!");
+        let pem_data = generate_certificate(&configuration, json_public_key, &format!("User {}", i)).expect("Failed to generate certificate!");
         debug!("Certificate: {:?}", pem_data);
 
         // Set the certificate
-        match context.set_certificate(&key_path, Some(&pem_data[..])) {
+        match context.set_certificate(key_path, Some(&pem_data[..])) {
             Ok(_) => debug!("Certificate set successfully."),
             Err(error) => panic!("Setting certificate has failed: {:?}", error),
         }
 
         // Get the certificate
-        let recovered_cert = match context.get_certificate(&key_path) {
+        let recovered_cert = match context.get_certificate(key_path) {
             Ok(cert_data) => cert_data,
             Err(error) => panic!("Getting certificate has failed: {:?}", error),
         };
@@ -187,13 +181,13 @@ fn test_remove_certificate() {
         assert!(recovered_cert.is_some());
 
         // Remove the certificate
-        match context.set_certificate(&key_path, None) {
+        match context.set_certificate(key_path, None) {
             Ok(_) => debug!("Certificate removed."),
             Err(error) => panic!("Removing certificate has failed: {:?}", error),
         }
 
         // Get the certificate (again)
-        let recovered_cert = match context.get_certificate(&key_path) {
+        let recovered_cert = match context.get_certificate(key_path) {
             Ok(cert_data) => cert_data,
             Err(ErrorCode::FapiError(BaseErrorCode::NoCert)) => None,
             Err(error) => panic!("Getting certificate has failed: {:?}", error),
@@ -239,37 +233,23 @@ fn test_get_platform_certificates() {
 // Helper functions
 // ==========================================================================
 
-fn generate_certificate(
-    config: &TestConfiguration,
-    public_key: JsonValue,
-    common_name: &str,
-) -> Option<String> {
+fn generate_certificate(config: &TestConfiguration, public_key: JsonValue, common_name: &str) -> Option<String> {
     let common_name = common_name.trim();
-    assert!(
-        !common_name.is_empty()
-            && common_name
-                .chars()
-                .all(|c| char::is_ascii_alphanumeric(&c) || c == '\x20')
-    );
+    assert!(!common_name.is_empty() && common_name.chars().all(|c| char::is_ascii_alphanumeric(&c) || c == '\x20'));
 
     let key_suffix = get_key_suffix(config).expect("Failed to determine key type!");
     let public_key = public_key["pem_ext_public"].as_str()?;
     let tmp_pubkey = TempFile::with_suffix(config.work_path(), "pem")?;
 
-    fs::write(&tmp_pubkey.path(), public_key).ok()?;
+    fs::write(tmp_pubkey.path(), public_key).ok()?;
 
     let cert_data = Command::new("openssl")
         .arg("x509")
         .arg("-new")
         .arg("-CA")
-        .arg(
-            config
-                .data_path()
-                .join("keys")
-                .join(format!("ca_key_{}.pem", key_suffix)),
-        )
+        .arg(config.data_path().join("keys").join(format!("ca_key_{}.pem", key_suffix)))
         .arg("-force_pubkey")
-        .arg(&tmp_pubkey.path())
+        .arg(tmp_pubkey.path())
         .arg("-subj")
         .arg(format!("/CN={}", common_name))
         .stderr(Stdio::null())

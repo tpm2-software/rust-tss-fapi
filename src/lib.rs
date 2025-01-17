@@ -434,13 +434,8 @@ mod memory;
 mod version;
 
 pub use algorithm_id::HashAlgorithm;
-pub use callback::{
-    ActnCallback, ActnCallbackParam, AuthCallback, AuthCallbackParam, BranCallback,
-    BranCallbackParam, SignCallback, SignCallbackParam,
-};
+pub use callback::{ActnCallback, ActnCallbackParam, AuthCallback, AuthCallbackParam, BranCallback, BranCallbackParam, SignCallback, SignCallbackParam};
 pub use context::FapiContext;
-pub use error::{
-    BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning,
-};
+pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
 pub use version::{get_version, VersionInfo};

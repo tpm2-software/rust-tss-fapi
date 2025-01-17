@@ -216,30 +216,14 @@ impl ErrorCode {
     pub(crate) fn from_raw(error_code: TSS2_RC) -> Self {
         let layer_code = error_code & !LAYER_BIT_MASK;
         match layer_code {
-            constants::TSS2_TPM_RC_LAYER => {
-                ErrorCode::TpmError(Tpm2ErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_FEATURE_RC_LAYER => {
-                ErrorCode::FapiError(BaseErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_ESAPI_RC_LAYER => {
-                ErrorCode::EsysApiError(BaseErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_SYS_RC_LAYER => {
-                ErrorCode::SysApiError(BaseErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_MU_RC_LAYER => {
-                ErrorCode::MuApiError(BaseErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_TCTI_RC_LAYER => {
-                ErrorCode::TctiError(BaseErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_RESMGR_RC_LAYER => {
-                ErrorCode::ResMgrError(BaseErrorCode::from_raw(error_code))
-            }
-            constants::TSS2_RESMGR_TPM_RC_LAYER => {
-                ErrorCode::ResMgrTpmError(BaseErrorCode::from_raw(error_code))
-            }
+            constants::TSS2_TPM_RC_LAYER => ErrorCode::TpmError(Tpm2ErrorCode::from_raw(error_code)),
+            constants::TSS2_FEATURE_RC_LAYER => ErrorCode::FapiError(BaseErrorCode::from_raw(error_code)),
+            constants::TSS2_ESAPI_RC_LAYER => ErrorCode::EsysApiError(BaseErrorCode::from_raw(error_code)),
+            constants::TSS2_SYS_RC_LAYER => ErrorCode::SysApiError(BaseErrorCode::from_raw(error_code)),
+            constants::TSS2_MU_RC_LAYER => ErrorCode::MuApiError(BaseErrorCode::from_raw(error_code)),
+            constants::TSS2_TCTI_RC_LAYER => ErrorCode::TctiError(BaseErrorCode::from_raw(error_code)),
+            constants::TSS2_RESMGR_RC_LAYER => ErrorCode::ResMgrError(BaseErrorCode::from_raw(error_code)),
+            constants::TSS2_RESMGR_TPM_RC_LAYER => ErrorCode::ResMgrTpmError(BaseErrorCode::from_raw(error_code)),
             _ => ErrorCode::OtherError(BaseErrorCode::from_raw(error_code)),
         }
     }
@@ -273,21 +257,15 @@ impl BaseErrorCode {
             constants::TSS2_BASE_RC_BAD_TCTI_STRUCTURE => BaseErrorCode::BadTctiStructure,
             constants::TSS2_BASE_RC_MEMORY => BaseErrorCode::Memory,
             constants::TSS2_BASE_RC_BAD_TR => BaseErrorCode::BadTr,
-            constants::TSS2_BASE_RC_MULTIPLE_DECRYPT_SESSIONS => {
-                BaseErrorCode::MultipleDecryptSessions
-            }
-            constants::TSS2_BASE_RC_MULTIPLE_ENCRYPT_SESSIONS => {
-                BaseErrorCode::MultipleEncryptSessions
-            }
+            constants::TSS2_BASE_RC_MULTIPLE_DECRYPT_SESSIONS => BaseErrorCode::MultipleDecryptSessions,
+            constants::TSS2_BASE_RC_MULTIPLE_ENCRYPT_SESSIONS => BaseErrorCode::MultipleEncryptSessions,
             constants::TSS2_BASE_RC_RSP_AUTH_FAILED => BaseErrorCode::RspAuthFailed,
             constants::TSS2_BASE_RC_NO_CONFIG => BaseErrorCode::NoConfig,
             constants::TSS2_BASE_RC_BAD_PATH => BaseErrorCode::BadPath,
             constants::TSS2_BASE_RC_NOT_DELETABLE => BaseErrorCode::NotDeletable,
             constants::TSS2_BASE_RC_PATH_ALREADY_EXISTS => BaseErrorCode::PathAlreadyExists,
             constants::TSS2_BASE_RC_KEY_NOT_FOUND => BaseErrorCode::KeyNotFound,
-            constants::TSS2_BASE_RC_SIGNATURE_VERIFICATION_FAILED => {
-                BaseErrorCode::SignatureVerificationFailed
-            }
+            constants::TSS2_BASE_RC_SIGNATURE_VERIFICATION_FAILED => BaseErrorCode::SignatureVerificationFailed,
             constants::TSS2_BASE_RC_HASH_MISMATCH => BaseErrorCode::HashMismatch,
             constants::TSS2_BASE_RC_KEY_NOT_DUPLICABLE => BaseErrorCode::KeyNotDuplicable,
             constants::TSS2_BASE_RC_PATH_NOT_FOUND => BaseErrorCode::PathNotFound,

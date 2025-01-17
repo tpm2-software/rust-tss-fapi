@@ -51,7 +51,7 @@ fn test_nv_write() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create NV index, if not already created
-        match context.create_nv(&nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
+        match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -60,7 +60,7 @@ fn test_nv_write() {
         thread_rng().fill_bytes(&mut data[..]);
 
         // Write data to NV index
-        match context.nv_write(&nv_path, &data[..]) {
+        match context.nv_write(nv_path, &data[..]) {
             Ok(_) => debug!("Data written."),
             Err(error) => panic!("Writing data to NV index has failed: {:?}", error),
         }
@@ -69,7 +69,7 @@ fn test_nv_write() {
         let number = thread_rng().next_u64();
 
         // Write number to NV index
-        match context.nv_write_u64(&nv_path, number) {
+        match context.nv_write_u64(nv_path, number) {
             Ok(_) => debug!("Number written."),
             Err(error) => panic!("Writing data to NV index has failed: {:?}", error),
         }
@@ -97,7 +97,7 @@ fn test_nv_read() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create NV index, if not already created
-        match context.create_nv(&nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
+        match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -106,19 +106,19 @@ fn test_nv_read() {
         thread_rng().fill_bytes(&mut data[..]);
 
         // Write data to NV index
-        match context.nv_write(&nv_path, &data[..]) {
+        match context.nv_write(nv_path, &data[..]) {
             Ok(_) => debug!("Data written."),
             Err(error) => panic!("Writing data to NV index has failed: {:?}", error),
         }
 
         // Read data from NV index
-        let recovered_data = match context.nv_read(&nv_path, false) {
+        let recovered_data = match context.nv_read(nv_path, false) {
             Ok(data) => data,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
 
         // Validate the result
-        assert!((&recovered_data.0[..]).eq(&data[..]));
+        assert!(recovered_data.0[..].eq(&data[..]));
         assert!(recovered_data.1.is_none());
     });
 }
@@ -143,31 +143,31 @@ fn test_nv_counter() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create NV index, if not already created
-        match context.create_nv(&nv_path, Some(NV_COUNTER_FLAGS), 0usize, None, None) {
+        match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), 0usize, None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
 
         // Increment the counter
-        match context.nv_increment(&nv_path) {
+        match context.nv_increment(nv_path) {
             Ok(_) => debug!("Incremented."),
             Err(error) => panic!("Incrementing the NV index has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let counter_1 = match context.nv_read_u64(&nv_path) {
+        let counter_1 = match context.nv_read_u64(nv_path) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
 
         // Increment the counter
-        match context.nv_increment(&nv_path) {
+        match context.nv_increment(nv_path) {
             Ok(_) => debug!("Incremented."),
             Err(error) => panic!("Incrementing the NV index has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let counter_2 = match context.nv_read_u64(&nv_path) {
+        let counter_2 = match context.nv_read_u64(nv_path) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
@@ -201,43 +201,43 @@ fn test_nv_bitset() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create NV index, if not already created
-        match context.create_nv(&nv_path, Some(NV_BITFIELD_FLAGS), 0usize, None, None) {
+        match context.create_nv(nv_path, Some(NV_BITFIELD_FLAGS), 0usize, None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
 
         // Initialize bits in NV index
-        match context.nv_set_bits(&nv_path, 0u64) {
+        match context.nv_set_bits(nv_path, 0u64) {
             Ok(_) => debug!("Bits set."),
             Err(error) => panic!("Setting the NV index bits has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let bits_0 = match context.nv_read_u64(&nv_path) {
+        let bits_0 = match context.nv_read_u64(nv_path) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
 
         // Set bits in NV index
-        match context.nv_set_bits(&nv_path, 0x5555555555555555u64) {
+        match context.nv_set_bits(nv_path, 0x5555555555555555u64) {
             Ok(_) => debug!("Bits set."),
             Err(error) => panic!("Setting the NV index bits has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let bits_1 = match context.nv_read_u64(&nv_path) {
+        let bits_1 = match context.nv_read_u64(nv_path) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
 
         // Set bits in NV index
-        match context.nv_set_bits(&nv_path, 0xAAAAAAAAAAAAAAAAu64) {
+        match context.nv_set_bits(nv_path, 0xAAAAAAAAAAAAAAAAu64) {
             Ok(_) => debug!("Bits set."),
             Err(error) => panic!("Setting the NV index bits has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let bits_2 = match context.nv_read_u64(&nv_path) {
+        let bits_2 = match context.nv_read_u64(nv_path) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
@@ -276,7 +276,7 @@ fn test_nv_pcr() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create NV index, if not already created
-        match context.create_nv(&nv_path, Some(NV_PCR_FLAGS), 0usize, None, None) {
+        match context.create_nv(nv_path, Some(NV_PCR_FLAGS), 0usize, None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -288,17 +288,13 @@ fn test_nv_pcr() {
         ];
 
         // Extend PCR at NV index
-        match context.nv_extend(
-            &nv_path,
-            &generate_bytes::<128usize>(&mut rng)[..],
-            Some(&log_data[0]),
-        ) {
+        match context.nv_extend(nv_path, &generate_bytes::<128usize>(&mut rng)[..], Some(&log_data[0])) {
             Ok(_) => debug!("Extended."),
             Err(error) => panic!("Incrementing NV index has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let pcr_value_1 = match context.nv_read(&nv_path, true) {
+        let pcr_value_1 = match context.nv_read(nv_path, true) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
@@ -312,17 +308,13 @@ fn test_nv_pcr() {
         }
 
         // Extend PCR at NV index
-        match context.nv_extend(
-            &nv_path,
-            &generate_bytes::<128usize>(&mut rng)[..],
-            Some(&log_data[1]),
-        ) {
+        match context.nv_extend(nv_path, &generate_bytes::<128usize>(&mut rng)[..], Some(&log_data[1])) {
             Ok(_) => debug!("Extended."),
             Err(error) => panic!("Incrementing NV index has failed: {:?}", error),
         };
 
         // Read data from NV index
-        let pcr_value_2 = match context.nv_read(&nv_path, true) {
+        let pcr_value_2 = match context.nv_read(nv_path, true) {
             Ok(value) => value,
             Err(error) => panic!("Reading data from NV index has failed: {:?}", error),
         };
@@ -337,6 +329,6 @@ fn test_nv_pcr() {
 
         // Verify
         assert_eq!(pcr_value_1.0.len(), pcr_value_2.0.len());
-        assert!((&pcr_value_1.0[..]).ne(&pcr_value_2.0[..]));
+        assert!(pcr_value_1.0[..].ne(&pcr_value_2.0[..]));
     });
 }

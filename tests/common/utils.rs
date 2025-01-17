@@ -21,12 +21,7 @@ pub fn _repeat_test<F: Fn(usize)>(name: &str, test_fn: F) {
             .unwrap_or(LOOPS_DEFAULT_VALUE)
     });
     for i in 0..loops {
-        info!(
-            "\u{25B6} {}, execution {} of {} \u{25C0}",
-            name,
-            i + 1,
-            loops
-        );
+        info!("\u{25B6} {}, execution {} of {} \u{25C0}", name, i + 1, loops);
         test_fn(i);
     }
 }
@@ -35,7 +30,7 @@ pub fn _repeat_test<F: Fn(usize)>(name: &str, test_fn: F) {
 #[macro_export]
 macro_rules! repeat_test {
     ($func:expr) => {
-        crate::common::utils::_repeat_test(function_name!(), $func)
+        $crate::common::utils::_repeat_test(function_name!(), $func)
     };
 }
 
@@ -43,11 +38,7 @@ macro_rules! repeat_test {
 #[macro_export]
 macro_rules! skip_test_ifeq {
     ($conf:ident, $name:literal) => {
-        if $conf
-            .prof_name()
-            .get(..$name.len())
-            .map_or(false, |name| name.eq_ignore_ascii_case($name))
-        {
+        if $conf.prof_name().get(..$name.len()).map_or(false, |name| name.eq_ignore_ascii_case($name)) {
             warn!("Skipping this test for \"{}\" profile!", $name);
             return; /* skip! */
         }
@@ -66,9 +57,7 @@ macro_rules! tpm_initialize {
 
         match $context.provision(None, Some($password), None) {
             Ok(_) => log::debug!("Provisioned."),
-            Err(tss2_fapi_rs::ErrorCode::FapiError(
-                tss2_fapi_rs::BaseErrorCode::AlreadyProvisioned,
-            )) => log::debug!("TPM already provisioned."),
+            Err(tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::AlreadyProvisioned)) => log::debug!("TPM already provisioned."),
             Err(error) => panic!("Provisioning has failed: {:?}", error),
         }
     };
@@ -78,13 +67,8 @@ macro_rules! tpm_initialize {
 #[macro_export]
 macro_rules! mk_auth_callback {
     ($fn_name:ident, $password:expr) => {
-        fn $fn_name(
-            param: tss2_fapi_rs::AuthCallbackParam,
-        ) -> Option<std::borrow::Cow<'static, str>> {
-            log::debug!(
-                "(AUTH_CB) Auth value for path {:?} has been requested!",
-                param.object_path
-            );
+        fn $fn_name(param: tss2_fapi_rs::AuthCallbackParam) -> Option<std::borrow::Cow<'static, str>> {
+            log::debug!("(AUTH_CB) Auth value for path {:?} has been requested!", param.object_path);
             log::trace!("(AUTH_CB) Parameters: {:?}", param);
 
             let object_path = param
@@ -93,10 +77,7 @@ macro_rules! mk_auth_callback {
                 .map(|pos| &param.object_path[pos + 1usize..])
                 .unwrap_or(param.object_path);
             if !object_path.eq("HS") && !object_path.starts_with("HS/SRK/my") {
-                log::warn!(
-                    "(AUTH_CB) The requested object path {:?} is not recognized!",
-                    object_path
-                );
+                log::warn!("(AUTH_CB) The requested object path {:?} is not recognized!", object_path);
                 return None;
             }
 

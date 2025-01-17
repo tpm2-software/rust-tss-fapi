@@ -12,16 +12,11 @@ pub(crate) fn u64_from_be(bytes: &[u8]) -> u64 {
     u64::from_be_bytes(<[u8; U64_SIZE]>::try_from(resize_be(bytes, U64_SIZE).as_ref()).unwrap())
 }
 
-pub(crate) fn resize_be<'a>(bytes: &'a [u8], new_size: usize) -> Cow<'a, [u8]> {
+pub(crate) fn resize_be(bytes: &[u8], new_size: usize) -> Cow<'_, [u8]> {
     if bytes.len() >= new_size {
         Cow::Borrowed(&bytes[bytes.len() - new_size..])
     } else {
-        Cow::Owned(
-            repeat(0u8)
-                .take(new_size - bytes.len())
-                .chain(bytes.into_iter().copied())
-                .collect::<Vec<u8>>(),
-        )
+        Cow::Owned(repeat(0u8).take(new_size - bytes.len()).chain(bytes.iter().copied()).collect::<Vec<u8>>())
     }
 }
 
@@ -52,22 +47,10 @@ mod tests {
             match length {
                 1usize => assert_eq!(resize_be(&value, length).as_ref(), &[0x44_u8]),
                 2usize => assert_eq!(resize_be(&value, length).as_ref(), &[0x33_u8, 0x44_u8]),
-                3usize => assert_eq!(
-                    resize_be(&value, length).as_ref(),
-                    &[0x22_u8, 0x33_u8, 0x44_u8]
-                ),
-                4usize => assert_eq!(
-                    resize_be(&value, length).as_ref(),
-                    &[0x11_u8, 0x22_u8, 0x33_u8, 0x44_u8]
-                ),
-                5usize => assert_eq!(
-                    resize_be(&value, length).as_ref(),
-                    &[0x00_u8, 0x11_u8, 0x22_u8, 0x33_u8, 0x44_u8]
-                ),
-                6usize => assert_eq!(
-                    resize_be(&value, length).as_ref(),
-                    &[0x00_u8, 0x00_u8, 0x11_u8, 0x22_u8, 0x33_u8, 0x44_u8]
-                ),
+                3usize => assert_eq!(resize_be(&value, length).as_ref(), &[0x22_u8, 0x33_u8, 0x44_u8]),
+                4usize => assert_eq!(resize_be(&value, length).as_ref(), &[0x11_u8, 0x22_u8, 0x33_u8, 0x44_u8]),
+                5usize => assert_eq!(resize_be(&value, length).as_ref(), &[0x00_u8, 0x11_u8, 0x22_u8, 0x33_u8, 0x44_u8]),
+                6usize => assert_eq!(resize_be(&value, length).as_ref(), &[0x00_u8, 0x00_u8, 0x11_u8, 0x22_u8, 0x33_u8, 0x44_u8]),
                 _ => unreachable!(),
             }
         }

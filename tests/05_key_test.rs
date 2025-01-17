@@ -46,7 +46,7 @@ fn test_create_key() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -61,10 +61,7 @@ fn test_list_keys() {
     let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
 
     repeat_test!(|i| {
-        let key_paths = [
-            &format!("HS/SRK/myTestKey{}a", i),
-            &format!("HS/SRK/myTestKey{}b", i),
-        ];
+        let key_paths = [&format!("HS/SRK/myTestKey{}a", i), &format!("HS/SRK/myTestKey{}b", i)];
 
         // Create FAPI context
         let mut context = match FapiContext::new() {
@@ -121,27 +118,24 @@ fn test_export_key() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Export the key from TPM
-        let key_data_json = match context.export_key(&key_path, None) {
+        let key_data_json = match context.export_key(key_path, None) {
             Ok(data) => data,
             Err(error) => panic!("Key export has failed: {:?}", error),
         };
 
         // Get public key in PEM format from JSON data
         assert!(!key_data_json.is_empty());
-        let pem_data = key_data_json["pem_ext_public"]
-            .as_str()
-            .expect("Failed to extract public key from JSON data!");
+        let pem_data = key_data_json["pem_ext_public"].as_str().expect("Failed to extract public key from JSON data!");
         debug!("PEM data: {:?}", pem_data);
 
         // Load public key from PEM data
-        let loaded_public_key = get_key_type(&configuration.prof_name())
-            .map(|key_type| load_public_key(pem_data, key_type));
+        let loaded_public_key = get_key_type(configuration.prof_name()).map(|key_type| load_public_key(pem_data, key_type));
         assert!(loaded_public_key.is_some());
         debug!("Public key: {:?}", loaded_public_key);
     });
@@ -167,19 +161,19 @@ fn test_delete() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
         // Delete the key
-        match context.delete(&key_path) {
+        match context.delete(key_path) {
             Ok(_) => debug!("Key deleted successfully."),
             Err(error) => panic!("The key could not be deleted: {:?}", error),
         };
 
         // Try delete the key again (expected to fail!)
-        match context.delete(&key_path) {
+        match context.delete(key_path) {
             Err(ErrorCode::FapiError(BaseErrorCode::BadPath)) => (),
             Ok(_) => panic!("Key was deleted again!"),
             Err(error) => panic!("The key could not be deleted: {:?}", error),
@@ -207,7 +201,7 @@ fn test_get_tpm_blobs() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -249,7 +243,7 @@ fn test_get_tpm_blobs_with_private() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -296,7 +290,7 @@ fn test_get_esys_blob() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }

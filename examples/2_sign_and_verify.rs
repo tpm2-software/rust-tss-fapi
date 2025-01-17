@@ -88,14 +88,7 @@ fn main() {
     };
 
     // Print verification result
-    info!(
-        "Result: {}",
-        if verify_result {
-            "valid \u{2714}"
-        } else {
-            "invalid \u{274C}"
-        }
-    );
+    info!("Result: {}", if verify_result { "valid \u{2714}" } else { "invalid \u{274C}" });
 
     // Exit
     info!("Shutting down...");

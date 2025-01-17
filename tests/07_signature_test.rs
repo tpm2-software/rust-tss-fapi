@@ -53,7 +53,7 @@ fn test_sign() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -106,7 +106,7 @@ fn test_sign_with_pubkey() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -131,17 +131,11 @@ fn test_sign_with_pubkey() {
         debug!("Signature value: {}", hex::encode(signature_data));
 
         // Print the public key
-        assert!(signature
-            .1
-            .as_ref()
-            .map_or(false, |pem_data| !pem_data.is_empty()));
+        assert!(signature.1.as_ref().map_or(false, |pem_data| !pem_data.is_empty()));
         debug!("Public key: \"{}\"", signature.1.unwrap_or_default());
 
         // Print the certificate, if any:
-        debug!(
-            "Certificate: \"{}\"",
-            signature.2.unwrap_or_else(String::new).trim()
-        );
+        debug!("Certificate: \"{}\"", signature.2.unwrap_or_else(String::new).trim());
     });
 }
 
@@ -168,7 +162,7 @@ fn test_verify_signature() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Create new key, if not already created
-        match context.create_key(&key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
