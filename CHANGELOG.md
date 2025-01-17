@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.5.5] - 2025-01-17
+
+### Added
+
+- Introduced the `locking` and `full_locking` features to make the serialization of FAPI calls optional.
+
 ## [0.5.4] - 2025-01-17
 
 ### Added

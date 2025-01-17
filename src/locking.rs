@@ -41,7 +41,7 @@ mod lock_impl {
     use std::sync::RwLock;
 
     pub enum LockGuard {
-        None
+        None,
     }
 
     impl LockGuard {
