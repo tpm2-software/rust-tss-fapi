@@ -4,40 +4,66 @@
  * All rights reserved.
  ******************************************************************************/
 
-use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-
 // ==========================================================================
 // LockGuard
 // ==========================================================================
 
-pub enum LockGuard<'a, T> {
-    Exclusive(RwLockWriteGuard<'a, T>),
-    Shared(RwLockReadGuard<'a, T>),
-}
+#[cfg(feature = "locking")]
+mod lock_impl {
+    use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-impl<'a, T> LockGuard<'a, T> {
-    pub fn acquire(rw_lock: &'a RwLock<T>, exclusive: bool) -> Self {
-        if exclusive {
-            Self::Exclusive(rw_lock.write().expect("Failed to acquire exclusive lock!"))
-        } else {
-            Self::Shared(rw_lock.read().expect("Failed to acquire shared lock!"))
-        }
+    pub enum LockGuard<'a, T> {
+        Exclusive(RwLockWriteGuard<'a, T>),
+        Shared(RwLockReadGuard<'a, T>),
     }
 
-    #[allow(dead_code)]
-    pub fn is_exclusive(&self) -> bool {
-        match self {
-            Self::Exclusive(_guard) => true,
-            Self::Shared(_guard) => false,
+    impl<'a, T> LockGuard<'a, T> {
+        pub fn acquire(rw_lock: &'a RwLock<T>, exclusive: bool) -> Self {
+            if cfg!(feature = "full_locking") || exclusive {
+                Self::Exclusive(rw_lock.write().expect("Failed to acquire exclusive lock!"))
+            } else {
+                Self::Shared(rw_lock.read().expect("Failed to acquire shared lock!"))
+            }
+        }
+
+        #[allow(dead_code)]
+        pub fn is_exclusive(&self) -> bool {
+            match self {
+                Self::Exclusive(_guard) => true,
+                Self::Shared(_guard) => false,
+            }
         }
     }
 }
+
+#[cfg(not(feature = "locking"))]
+mod lock_impl {
+    use std::sync::RwLock;
+
+    pub enum LockGuard {
+        None
+    }
+
+    impl LockGuard {
+        pub fn acquire<T>(_rw_lock: &RwLock<T>, _exclusive: bool) -> Self {
+            LockGuard::None
+        }
+
+        #[allow(dead_code)]
+        pub fn is_exclusive(&self) -> bool {
+            panic!("Error: Locking feature is not enabled!")
+        }
+    }
+}
+
+pub use lock_impl::LockGuard;
 
 // ==========================================================================
 // Unit tests
 // ==========================================================================
 
 #[cfg(test)]
+#[cfg(feature = "locking")]
 mod tests {
     use super::LockGuard;
     use std::{

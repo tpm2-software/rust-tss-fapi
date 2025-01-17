@@ -96,10 +96,19 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.5.3"
+//! tss2-fapi-rs = "0.5.5"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
+//!
+//! #### Features
+//!
+//! Optional [features](https://doc.rust-lang.org/cargo/reference/features.html) that can be enabled/disabled for the `tss2-fapi-rs` library:
+//!
+//! Feature        | Description
+//! -------------- | ----------------------------------------------------------------------------------------------------------------
+//! `locking`      | Use an [R/W Lock](std::sync::RwLock) to serialize the invocations of certain "critical" FAPI functions (default)
+//! `full_locking` | Similar to feature `locking`, but serializes **all** FAPI function invocations
 //!
 //! ### Build instructions
 //!

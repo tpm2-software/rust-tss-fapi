@@ -995,7 +995,7 @@ dependencies = [
 
 [[package]]
 name = "tss2-fapi-rs"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "bindgen",
  "const-random",
