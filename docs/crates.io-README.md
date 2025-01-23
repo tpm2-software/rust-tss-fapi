@@ -18,7 +18,8 @@ The current version of the API does not offer any security or code safety guaran
 
 ## License
 
-&copy; 2024-2025 [Fraunhofer SIT](https://www.sit.fraunhofer.de/en/), sponsored by the [ELISA and ProSeCA](https://novomotive.de) research projects.
+Copyright &copy; 2024-2025 [Fraunhofer SIT](https://www.sit.fraunhofer.de/en/),  
+sponsored by the [ELISA and ProSeCA](https://novomotive.de/) research projects.  
 All rights reserved.
 
 This work is released under the [**3-Clause BSD License**](https://opensource.org/license/bsd-3-clause).

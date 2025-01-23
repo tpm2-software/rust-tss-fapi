@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-/*******************************************************************************
+/***********************************************************************************************
  * Copyright 2024-2025 Fraunhofer SIT, sponsored by the ELISA and ProSeCA research projects.
  * All rights reserved.
- ******************************************************************************/
+ **********************************************************************************************/
 
 //! [![Rust](https://img.shields.io/badge/rust-1.79.0+-orchid?logo=rust)](https://www.rust-lang.org/)
 //! [![Crates.io](https://img.shields.io/crates/v/tss2-fapi-rs.svg)](https://crates.io/crates/tss2-fapi-rs)

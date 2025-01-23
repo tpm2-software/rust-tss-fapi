@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-/*******************************************************************************
+/***********************************************************************************************
  * Copyright 2024-2025 Fraunhofer SIT, sponsored by the ELISA and ProSeCA research projects.
  * All rights reserved.
- ******************************************************************************/
+ **********************************************************************************************/
 
 use crate::{ErrorCode, InternalError};
 use std::{borrow::Cow, collections::BTreeSet, fmt::Debug, num::NonZeroU32};
