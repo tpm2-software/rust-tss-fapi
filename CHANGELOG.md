@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.5.6] - 2025-01-23
+
+### Fixed
+
+- GitHub Actions: Workaround for our actions being aborted because of an outdated version of `actions/upload-artifact`. We did *not* use the "problematic" version directly, but it was used implicitely via an old version of `awalsh128/cache-apt-pkgs-action`.
+
+### Changed
+
+- Updated funding information in source files and documentation.
+
 ## [0.5.5] - 2025-01-17
 
 ### Added
