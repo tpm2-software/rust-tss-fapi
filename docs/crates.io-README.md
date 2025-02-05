@@ -4,7 +4,7 @@ This library provides an interface to the [TSS2.0 Feature API (FAPI)](https://tp
 
 #### Architectural overview
 
-![tss2-fapi-rs Overview](https://raw.githubusercontent.com/tpm2-software/rust-tss-fapi/main/docs/images/tss2-fapi-rs-overview.small.png)
+![tss2-fapi-rs Overview](https://raw.githubusercontent.com/tpm2-software/rust-tss-fapi/main/docs/images/tss2-fapi-rs.svg)
 
 ## See also
 

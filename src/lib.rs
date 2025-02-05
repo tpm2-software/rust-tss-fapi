@@ -14,7 +14,7 @@
 //! The **`tss2-fapi-rs`** Rust crate provides an interface to the [**TCG TSS 2.0 Feature API (FAPI)**](https://trustedcomputinggroup.org/resource/tss-fapi/).
 //!
 //! *Architectural overview:*  
-//! ![Overview](https://raw.githubusercontent.com/tpm2-software/rust-tss-fapi/main/docs/images/tss2-fapi-rs-overview.png)
+//! ![Overview](https://raw.githubusercontent.com/tpm2-software/rust-tss-fapi/main/docs/images/tss2-fapi-rs.svg)
 //!
 //! ### Disclaimer
 //!

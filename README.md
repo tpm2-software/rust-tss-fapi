@@ -10,7 +10,7 @@
 The **`tss2-fapi-rs`** Rust crate provides an interface to the [**TSS2.0 Feature API (FAPI)**](https://tpm2-tss.readthedocs.io/en/latest/group__fapi.html).
 
 *Architectural overview:*  
-![tss2-fapi-rs Overview](docs/images/tss2-fapi-rs-overview.png)
+![tss2-fapi-rs Overview](docs/images/tss2-fapi-rs.svg)
 
 ## Layout
 
