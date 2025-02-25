@@ -9,7 +9,7 @@ on:
       TOOLCHAIN_MAX:
         required: false
         type: string
-        default: "1.84.0"
+        default: "1.85.0"
       OS_VERS_MIN:
         required: false
         type: string
