@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.5.7] - 2025-04-22
+
+### Changed
+
+- Various dependencies have been updated to the latest version.
+- Incremented minimum supported Rust version to `1.82` in order to build with newer dependency versions.
+
 ## [0.5.6] - 2025-01-23
 
 ### Fixed
