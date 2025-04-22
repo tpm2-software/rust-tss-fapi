@@ -15,25 +15,25 @@ full_locking = ["locking"]
 
 [dependencies]
 json = "0.12.4"
-libc = "0.2.159"
-log = "0.4.22"
+libc = "0.2.172"
+log = "0.4.27"
 
 [build-dependencies]
-bindgen = "0.70.1"
-pkg-config = "0.3.31"
+bindgen = "0.71.1"
+pkg-config = "0.3.32"
 
 [dev-dependencies]
 const-random = "0.1.18"
 digest = "0.10.7"
-env_logger = "0.11.5"
+env_logger = "0.11.8"
 function_name = "0.3.0"
 hex = "0.4.3"
 memory-stats = "1.2.0"
 p256 = "0.13.2"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
-regex = "1.11.0"
-rsa = "0.9.6"
-serial_test = "3.1.1"
+regex = "1.11.1"
+rsa = "0.9.8"
+serial_test = "3.2.0"
 sha2 = "0.10.8"
-uuid = "1.10.0"
+uuid = "1.16.0"
