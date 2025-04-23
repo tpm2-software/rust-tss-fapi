@@ -48,7 +48,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
     runs-on: ubuntu-${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
     runs-on: ubuntu-${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
         profile: [RSA2048SHA256, ECCP256SHA256]
     runs-on: ubuntu-${{ matrix.platform }}
     steps:
@@ -152,7 +152,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
     runs-on: ubuntu-${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -289,4 +289,3 @@ jobs:
       - run: make publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
