@@ -67,7 +67,11 @@ type QuoteResult = (JsonValue, Vec<u8>, Option<JsonValue>, Option<String>);
 ///
 /// ### Thread Safety
 ///
-/// `FapiContext` implements the `Send` trait, so it may be transferred to another thread. However, it does **not** implement the `Sync` trait! Hence, in order to share a `FapiContext` between multiple concurrent threads, wrapping the context in an `Arc<Mutex<_>>` is required. This effectively ensures that *at most* **one** thread at a time can access the "shared" `FapiContext`.
+/// In general, the FAPI is considered “thread-safe”, but individual instances of `FapiContext` are **not**.
+///
+/// This means that an application may safely access the FAPI from multiple *concurrent* threads, provided that each of these threads uses its own separate `FapiContext` instance. Sharing the same `FapiContext` instance between *concurrent* threads is also possible, but this requires an explicit synchronization to ensure that *at most* **one** thread at a time will access the "shared" instance! Specifically, `FapiContext` implements the [`Send`] trait, so it may be transferred to another thread, but it does **not** implement the [`Sync`] trait. However, you can wrap the context in an `Arc<Mutex<T>>` in order to share it safely between multiple threads.
+///
+/// By default, the `tss2-fapi-rs` library does **not** serialize FAPI calls from *concurrent* application threads, except for a few “critical” functions. The optional **`full_locking`** feature can be enabled to enforce the serialization of *all* FAPI calls.
 ///
 /// ### FAPI Library
 ///

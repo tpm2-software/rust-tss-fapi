@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use std::{borrow::Cow, iter::repeat, mem::size_of};
+use std::{borrow::Cow, iter::repeat_n, mem::size_of};
 
 const U64_SIZE: usize = size_of::<u64>();
 
@@ -16,7 +16,7 @@ pub(crate) fn resize_be(bytes: &[u8], new_size: usize) -> Cow<'_, [u8]> {
     if bytes.len() >= new_size {
         Cow::Borrowed(&bytes[bytes.len() - new_size..])
     } else {
-        Cow::Owned(repeat(0u8).take(new_size - bytes.len()).chain(bytes.iter().copied()).collect::<Vec<u8>>())
+        Cow::Owned(repeat_n(0u8, new_size - bytes.len()).chain(bytes.iter().copied()).collect::<Vec<u8>>())
     }
 }
 

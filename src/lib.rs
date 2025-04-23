@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-//! [![Rust](https://img.shields.io/badge/rust-1.79.0+-orchid?logo=rust)](https://www.rust-lang.org/)
+//! [![Rust](https://img.shields.io/badge/rust-1.82.0+-orchid?logo=rust)](https://www.rust-lang.org/)
 //! [![Crates.io](https://img.shields.io/crates/v/tss2-fapi-rs.svg)](https://crates.io/crates/tss2-fapi-rs)
 //! [![Docs.rs](https://img.shields.io/docsrs/tss2-fapi-rs.svg)](https://docs.rs/tss2-fapi-rs/latest/tss2_fapi_rs/)
 //! [![License](https://img.shields.io/crates/l/tss2-fapi-rs)](https://opensource.org/licenses/BSD-3-Clause)
