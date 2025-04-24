@@ -13,7 +13,7 @@ use common::{
 };
 use function_name::named;
 use log::{debug, trace};
-use rand::{thread_rng, RngCore, SeedableRng};
+use rand::{rng, RngCore, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use tss2_fapi_rs::{FapiContext, NvFlags};
@@ -57,7 +57,7 @@ fn test_nv_write() {
         }
 
         // Generate random data
-        thread_rng().fill_bytes(&mut data[..]);
+        rng().fill_bytes(&mut data[..]);
 
         // Write data to NV index
         match context.nv_write(nv_path, &data[..]) {
@@ -66,7 +66,7 @@ fn test_nv_write() {
         }
 
         // Generate random number
-        let number = thread_rng().next_u64();
+        let number = rng().next_u64();
 
         // Write number to NV index
         match context.nv_write_u64(nv_path, number) {
@@ -103,7 +103,7 @@ fn test_nv_read() {
         }
 
         // Generate random data
-        thread_rng().fill_bytes(&mut data[..]);
+        rng().fill_bytes(&mut data[..]);
 
         // Write data to NV index
         match context.nv_write(nv_path, &data[..]) {

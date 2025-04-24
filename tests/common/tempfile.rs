@@ -21,7 +21,7 @@ impl TempFile {
 
     pub fn with_suffix(base_dir: &Path, suffix: &str) -> Option<TempFile> {
         assert!(!suffix.is_empty() && suffix.chars().all(|c| char::is_ascii_alphanumeric(&c)));
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for _i in 0..99 {
             let file_path = base_dir.join(format!("temp-{:16X}.{}", rng.next_u64(), suffix));

@@ -39,7 +39,7 @@ pub fn generate_string<const N: usize>(rand_gen: &mut impl RngCore) -> String {
     ];
     let mut rand_str = ['\0'; N];
     for i in 0..N {
-        rand_str[i] = ASCII_PRINTABLE[rand_gen.gen_range(0..ASCII_PRINTABLE.len())];
+        rand_str[i] = ASCII_PRINTABLE[rand_gen.random_range(0..ASCII_PRINTABLE.len())];
     }
     String::from_iter(rand_str)
 }

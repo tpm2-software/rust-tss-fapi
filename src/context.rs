@@ -67,11 +67,11 @@ type QuoteResult = (JsonValue, Vec<u8>, Option<JsonValue>, Option<String>);
 ///
 /// ### Thread Safety
 ///
-/// In general, the FAPI is considered “thread-safe”, but individual instances of `FapiContext` are **not**.
+/// In general, the FAPI is considered “thread-safe”, but individual instances of `FapiContext` are **not** &#128680;
 ///
-/// This means that an application may safely access the FAPI from multiple *concurrent* threads, provided that each of these threads uses its own separate `FapiContext` instance. Sharing the same `FapiContext` instance between *concurrent* threads is also possible, but this requires an explicit synchronization to ensure that *at most* **one** thread at a time will access the "shared" instance! Specifically, `FapiContext` implements the [`Send`] trait, so it may be transferred to another thread, but it does **not** implement the [`Sync`] trait. However, you can wrap the context in an `Arc<Mutex<T>>` in order to share it safely between multiple threads.
+/// This means that an application may safely access the FAPI from multiple *concurrent* threads <u>without</u> any synchronization (locking) at the application level, provided that each thread uses its own separate `FapiContext`. Meanwhile, sharing the same `FapiContext` between *concurrent* threads requires an explicit synchronization in the application code to ensure that *at most* **one** thread at a time will access the "shared" context! Consequently, `FapiContext` implements the [`Send`] trait, but it does **not** implement the [`Sync`] trait. You can wrap the context in an `Arc<Mutex<T>>` in order to share it safely between multiple threads.
 ///
-/// By default, the `tss2-fapi-rs` library does **not** serialize FAPI calls from *concurrent* application threads, except for a few “critical” functions. The optional **`full_locking`** feature can be enabled to enforce the serialization of *all* FAPI calls.
+/// By default, the `tss2-fapi-rs` library does **not** serialize FAPI calls from *concurrent* contexts (threads), except for a few “critical” functions that need to be serialized. The optional **`full_locking`** feature can be enabled to enforce full serialization of *all* FAPI calls. Be aware, though, that the serialization of the FAPI calls is implemented *per-process*, **not** globally.
 ///
 /// ### FAPI Library
 ///
@@ -251,6 +251,8 @@ impl FapiContext {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     /// Provisions a TSS with its TPM. This includes the setting of important passwords and policy settings as well as the readout of the EK and its certificate and the initialization of the system-wide keystore.
+    ///
+    /// Invocations of this function are serialized between concurrent FAPI contexts (threads) by default.
     ///
     /// *See also:* [`Fapi_Provision()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___provision.html)
     pub fn provision(&mut self, auth_eh: Option<&str>, auth_sh: Option<&str>, auth_lo: Option<&str>) -> Result<(), ErrorCode> {
