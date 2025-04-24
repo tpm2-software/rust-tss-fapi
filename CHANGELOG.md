@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.5.8] - 2025-04-24
+
+### Changed
+
+- Various dependencies have been updated to the latest version.
+- Implemented workaround to make the test code compile with the new version of `rand` crate.
+
+### Added
+
+- GitHub Actions: Run the tests also with the `nightly` toolchain.
+
 ## [0.5.7] - 2025-04-22
 
 ### Changed
