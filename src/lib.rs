@@ -199,6 +199,9 @@
 //!
 //! The following environment variables may specify the location of the native FAPI library during the *build* process:
 //!
+//! * **`TSS2_FAPI_STATIC`**  
+//!   If set to `true` (or `yes`), instruct the *pkg-config* to link with the **static** FAPI library.
+//!
 //! * **`TSS2_INCLUDE_PATH`**  
 //!   Location of the TSS 2.0 header files. If specified, this path shall contain the `tss2_fapi.h` header file.  
 //!   This variable must be set in conjunction with `TSS2_LIBRARY_PATH` to be effective!

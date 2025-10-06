@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.5.9] - 2025-10-06
+
+### Changed
+
+- Various dependencies have been updated to the latest version.
+
+### Added
+
+- Added support for environment variable `TSS2_FAPI_STATIC` to the `build.rs` file, which allows the *static* version of the TSS2 FAPI library to be linked via pkg-config.
+
+### Fixed
+
+- Improved parsing of the TSS2 FAPI library version in the `build.rs` file, fixing possible errors with "custom" builds.
+
 ## [0.5.8] - 2025-04-24
 
 ### Changed

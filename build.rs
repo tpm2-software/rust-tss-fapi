@@ -5,11 +5,13 @@
  **********************************************************************************************/
 
 use pkg_config::{Config, Error};
+use regex::Regex;
 use std::{
     env,
     fs::File,
-    io::Write,
+    io::{Error as IoError, Write},
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 /// Library configuration type definition
@@ -21,6 +23,9 @@ const LIBRARY_NAME: &str = "tss2-fapi";
 /// Minimal required version of the native FAPI library
 /// The version specified here is equal to the TSS 2.0 version available in Ubuntu 22.04 LTS
 const LIBRARY_MIN_VERSION: &str = "3.2.0";
+
+/// Regex to parse the version string, assuming the `<major>.<minor>.<patch>` format
+static REGEX_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)\.(\d+)").unwrap());
 
 /// This build scripts is required to detect and link the "native" FAPI library
 fn main() {
@@ -69,8 +74,8 @@ fn main() {
         .expect("Failed to write FAPI bindings!");
 
     // Persist the detected library version
-    if !write_version_string(&out_path.join("tss2_fapi_versinfo.rs"), &tss2_fapi.3) {
-        panic!("Failed to write library version!");
+    if let Err(error) = write_version_string(&out_path.join("tss2_fapi_versinfo.rs"), &tss2_fapi.3) {
+        panic!("Failed to write library version: {:?}", error);
     }
 }
 
@@ -90,23 +95,36 @@ fn detect_tss2_library() -> Result<LibraryConfig, Error> {
         }
     }
 
+    // Link static TSS 2.0 library?
+    let statik: bool = option_env!("TSS2_FAPI_STATIC").is_some_and(parse_as_boolean);
+
     // Try to detect the TSS 2.0 library by invoking the `pkg-config` utility
     Config::new()
         .cargo_metadata(false)
         .atleast_version(LIBRARY_MIN_VERSION)
+        .statik(statik)
         .probe(LIBRARY_NAME)
         .map(|config| (config.libs, config.link_paths, config.include_paths, config.version))
 }
 
 /// Persist the version string to output file, so that it can be evaluated in the code at runtime
-fn write_version_string(path: &Path, version_string: &str) -> bool {
-    // Parse the version string, assuming that is is in the `"major.minor.patch"` format
-    let mut tokens = version_string.split('.');
-    let vers_major = tokens.next().unwrap_or_default().parse::<u16>().expect("Failed to parse version string!");
-    let vers_minor = tokens.next().unwrap_or_default().parse::<u16>().expect("Failed to parse version string!");
-    let vers_patch = tokens.next().unwrap_or_default().parse::<u16>().expect("Failed to parse version string!");
+fn write_version_string(path: &Path, version_string: &str) -> Result<(), IoError> {
+    // Parse the version string
+    let captures = REGEX_VERSION.captures(version_string.trim_ascii()).expect("Invalid version string!");
+    let vers_major = captures.get(1).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
+    let vers_minor = captures.get(2).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
+    let vers_patch = captures.get(3).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
 
     // Try to write the version string to the output file
     let mut file = File::create(path).expect("Failed to create output file for version!");
-    writeln!(file, r#"pub const TSS2_FAPI_VERSION: &str = "{}.{}.{}";"#, vers_major, vers_minor, vers_patch).is_ok()
+    writeln!(file, r#"pub const TSS2_FAPI_VERSION: &str = "{}.{}.{}";"#, vers_major, vers_minor, vers_patch)
+}
+
+/// Parse the given 'flag' string as a boolean value
+fn parse_as_boolean(str: &str) -> bool {
+    match str.trim_ascii() {
+        "" | "false" | "no" | "0" => false,
+        "true" | "yes" | "1" => true,
+        value => value.parse::<usize>().is_ok_and(|num| num > 0usize),
+    }
 }
