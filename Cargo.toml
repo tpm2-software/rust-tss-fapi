@@ -1,8 +1,8 @@
 [package]
 name = "tss2-fapi-rs"
 version = "0.5.9"
-edition = "2021"
-rust-version = "1.82"
+edition = "2024"
+rust-version = "1.85"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
 license = "BSD-3-Clause"
 authors = ["Daniel Trick <daniel.trick@sit.fraunhofer.de>"]
