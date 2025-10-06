@@ -6,19 +6,19 @@
 
 use digest::{Digest, FixedOutputReset};
 use p256::{
-    ecdsa::{signature::RandomizedDigestSigner as EccRandomizedDigestSigner, Signature as EccSignature, SigningKey as EccSigningKey},
-    pkcs8::DecodePrivateKey,
     PublicKey as EccPublicKey, SecretKey as EccPrivateKey,
+    ecdsa::{Signature as EccSignature, SigningKey as EccSigningKey, signature::RandomizedDigestSigner as EccRandomizedDigestSigner},
+    pkcs8::DecodePrivateKey,
 };
-use rand::{rng, RngCore};
+use rand::{RngCore, rng};
 use rsa::{
+    RsaPrivateKey, RsaPublicKey,
     pkcs8::DecodePublicKey,
     pss::{Signature as RsaSignature, SigningKey as RsaSigningKey},
     signature::{
-        rand_core::{CryptoRng as LegacyCryptoRng, Error as LegacyRngError, RngCore as LegacyRngCore},
         RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding,
+        rand_core::{CryptoRng as LegacyCryptoRng, Error as LegacyRngError, RngCore as LegacyRngCore},
     },
-    RsaPrivateKey, RsaPublicKey,
 };
 use sha2::{Sha256, Sha384, Sha512};
 use tss2_fapi_rs::HashAlgorithm;
@@ -155,7 +155,5 @@ fn create_signature_ecc(private_key: &EccPrivateKey, hash_algo: &HashAlgorithm, 
 /// Compute signature using the ECDSA-scheme on NIST P-256 curve
 fn _create_signature_ecc(private_key: &EccPrivateKey, message: &[u8]) -> Vec<u8> {
     let sign_key = EccSigningKey::from(private_key);
-    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut LegacyCompatRng, Sha256::new_with_prefix(message))
-        .to_der()
-        .to_vec()
+    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut LegacyCompatRng, Sha256::new_with_prefix(message)).to_der().to_vec()
 }

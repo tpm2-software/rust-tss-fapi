@@ -5,7 +5,7 @@
  **********************************************************************************************/
 
 use env_logger::Builder as EnvLogger;
-use log::{debug, info, warn, LevelFilter};
+use log::{LevelFilter, debug, info, warn};
 use sha2::{Digest, Sha256};
 use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
 

@@ -12,15 +12,15 @@ use common::{
     setup::TestConfiguration,
 };
 use function_name::named;
-use json::{number::Number, Error as JsonError, JsonValue};
+use json::{Error as JsonError, JsonValue, number::Number};
 use log::{debug, trace};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 use std::sync::{
-    atomic::{AtomicI64, Ordering},
     Arc,
+    atomic::{AtomicI64, Ordering},
 };
 use tss2_fapi_rs::{ActnCallback, ActnCallbackParam, FapiContext, KeyFlags};
 

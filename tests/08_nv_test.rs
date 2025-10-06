@@ -13,7 +13,7 @@ use common::{
 };
 use function_name::named;
 use log::{debug, trace};
-use rand::{rng, RngCore, SeedableRng};
+use rand::{RngCore, SeedableRng, rng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use tss2_fapi_rs::{FapiContext, NvFlags};
@@ -282,10 +282,7 @@ fn test_nv_pcr() {
         }
 
         // Prepare log data
-        let log_data = [
-            json::parse("{ \"test\": \"1st value\" }").unwrap(),
-            json::parse("{ \"test\": \"2nd value\" }").unwrap(),
-        ];
+        let log_data = [json::parse("{ \"test\": \"1st value\" }").unwrap(), json::parse("{ \"test\": \"2nd value\" }").unwrap()];
 
         // Extend PCR at NV index
         match context.nv_extend(nv_path, &generate_bytes::<128usize>(&mut rng)[..], Some(&log_data[0])) {

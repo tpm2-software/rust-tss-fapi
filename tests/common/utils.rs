@@ -15,11 +15,7 @@ static TEST_LOOPS: OnceLock<usize> = OnceLock::new();
 
 /// Repeat the given function (e.g. test) `n` times. Should be invoked by using the `repeat_test!()` macro!
 pub fn _repeat_test<F: Fn(usize)>(name: &str, test_fn: F) {
-    let loops = *TEST_LOOPS.get_or_init(|| {
-        option_env!("FAPI_RS_TEST_LOOP")
-            .and_then(|str| str.parse::<usize>().ok())
-            .unwrap_or(LOOPS_DEFAULT_VALUE)
-    });
+    let loops = *TEST_LOOPS.get_or_init(|| option_env!("FAPI_RS_TEST_LOOP").and_then(|str| str.parse::<usize>().ok()).unwrap_or(LOOPS_DEFAULT_VALUE));
     for i in 0..loops {
         info!("\u{25B6} {}, execution {} of {} \u{25C0}", name, i + 1, loops);
         test_fn(i);
@@ -71,11 +67,7 @@ macro_rules! mk_auth_callback {
             log::debug!("(AUTH_CB) Auth value for path {:?} has been requested!", param.object_path);
             log::trace!("(AUTH_CB) Parameters: {:?}", param);
 
-            let object_path = param
-                .object_path
-                .find('/')
-                .map(|pos| &param.object_path[pos + 1usize..])
-                .unwrap_or(param.object_path);
+            let object_path = param.object_path.find('/').map(|pos| &param.object_path[pos + 1usize..]).unwrap_or(param.object_path);
             if !object_path.eq("HS") && !object_path.starts_with("HS/SRK/my") {
                 log::warn!("(AUTH_CB) The requested object path {:?} is not recognized!", object_path);
                 return None;
@@ -93,11 +85,7 @@ macro_rules! mk_tpm_finalizer {
         fn $fn_name() {
             log::debug!("Cleaning up the TPM now!");
             if FapiContext::new()
-                .and_then(|mut fpai_ctx| {
-                    fpai_ctx
-                        .set_auth_callback(tss2_fapi_rs::AuthCallback::new($auth_cb))
-                        .and_then(|_| fpai_ctx.delete("/"))
-                })
+                .and_then(|mut fpai_ctx| fpai_ctx.set_auth_callback(tss2_fapi_rs::AuthCallback::new($auth_cb)).and_then(|_| fpai_ctx.delete("/")))
                 .is_err()
             {
                 log::warn!("Failed to clean-up test objects, take care!");

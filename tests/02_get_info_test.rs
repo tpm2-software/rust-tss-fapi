@@ -8,7 +8,7 @@ pub mod common;
 
 use common::setup::TestConfiguration;
 use function_name::named;
-use log::{debug, info, trace, Level};
+use log::{Level, debug, info, trace};
 use memory_stats::memory_stats;
 use serial_test::serial;
 use std::{mem, time::Instant};
@@ -104,10 +104,5 @@ fn test_to_destruction() {
 // ==========================================================================
 
 fn output_progress(current: usize, total: usize) {
-    info!(
-        "Progress: {:5} of {:5} completed. ({:5.1}%)",
-        current,
-        total,
-        (current as f64) / (total as f64) * 100_f64
-    );
+    info!("Progress: {:5} of {:5} completed. ({:5.1}%)", current, total, (current as f64) / (total as f64) * 100_f64);
 }

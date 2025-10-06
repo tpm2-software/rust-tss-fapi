@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::fapi_sys::{constants, TSS2_RC};
+use crate::fapi_sys::{TSS2_RC, constants};
 
 const LAYER_BIT_MASK: u32 = 0x0000FFFF;
 

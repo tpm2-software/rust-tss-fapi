@@ -110,13 +110,7 @@ fn test_get_appdata() {
         };
 
         // Verify
-        debug!(
-            "Application data: {}",
-            recovered_data
-                .as_ref()
-                .map(|data| hex::encode(&data[..]))
-                .unwrap_or_else(|| "(None)".to_owned())
-        );
+        debug!("Application data: {}", recovered_data.as_ref().map(|data| hex::encode(&data[..])).unwrap_or_else(|| "(None)".to_owned()));
         assert!(recovered_data.expect("No application-specific data avialble!")[..].eq_ignore_ascii_case(&app_data[..]))
     });
 }

@@ -7,7 +7,7 @@
 use core::slice;
 use json::{self, JsonValue};
 use std::{
-    ffi::{c_char, CStr},
+    ffi::{CStr, c_char},
     fmt::Display,
     num::NonZeroUsize,
     os::raw::c_void,
@@ -16,17 +16,16 @@ use std::{
 };
 
 use crate::fapi_sys::{
-    self,
+    self, FAPI_CONTEXT, TPM2_RC, TSS2_RC,
     constants::{self, TSS2_RC_SUCCESS},
-    FAPI_CONTEXT, TPM2_RC, TSS2_RC,
 };
 use crate::marshal::u64_from_be;
-use crate::memory::{cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr, CStringHolder, FapiMemoryHolder};
+use crate::memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr};
+use crate::{BaseErrorCode, BlobType, ErrorCode, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags, flags::flags_to_string};
 use crate::{
     callback::{ActnCallback, AuthCallback, BranCallback, SignCallback},
     locking::LockGuard,
 };
-use crate::{flags::flags_to_string, BaseErrorCode, BlobType, ErrorCode, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
 
 /* Const */
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::NoResultData);
@@ -184,11 +183,7 @@ impl FapiContext {
     pub fn set_auth_callback(&mut self, auth_callback: AuthCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(auth_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetAuthCB(
-                context,
-                Some(auth_callback_entrypoint),
-                callback_box.as_mut() as *mut AuthCallback as *mut c_void,
-            )
+            fapi_sys::Fapi_SetAuthCB(context, Some(auth_callback_entrypoint), callback_box.as_mut() as *mut AuthCallback as *mut c_void)
         })
         .map(|_| {
             self.callback_auth = Some(callback_box); /*store AuthCallback in FapiContext to keep it alive!*/
@@ -201,11 +196,7 @@ impl FapiContext {
     pub fn set_sign_callback(&mut self, sign_callback: SignCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(sign_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetSignCB(
-                context,
-                Some(sign_callback_entrypoint),
-                callback_box.as_mut() as *mut SignCallback as *mut c_void,
-            )
+            fapi_sys::Fapi_SetSignCB(context, Some(sign_callback_entrypoint), callback_box.as_mut() as *mut SignCallback as *mut c_void)
         })
         .map(|_| {
             self.callback_sign = Some(callback_box); /*store SignCallback in FapiContext to keep it alive!*/
@@ -218,11 +209,7 @@ impl FapiContext {
     pub fn set_branch_callback(&mut self, bran_callback: BranCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(bran_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetBranchCB(
-                context,
-                Some(branch_callback_entrypoint),
-                callback_box.as_mut() as *mut BranCallback as *mut c_void,
-            )
+            fapi_sys::Fapi_SetBranchCB(context, Some(branch_callback_entrypoint), callback_box.as_mut() as *mut BranCallback as *mut c_void)
         })
         .map(|_| {
             self.callback_bran = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
@@ -235,11 +222,7 @@ impl FapiContext {
     pub fn set_policy_action_callback(&mut self, actn_callback: ActnCallback) -> Result<(), ErrorCode> {
         let mut callback_box = Box::new(actn_callback);
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetPolicyActionCB(
-                context,
-                Some(action_callback_entrypoint),
-                callback_box.as_mut() as *mut ActnCallback as *mut c_void,
-            )
+            fapi_sys::Fapi_SetPolicyActionCB(context, Some(action_callback_entrypoint), callback_box.as_mut() as *mut ActnCallback as *mut c_void)
         })
         .map(|_| {
             self.callback_actn = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
@@ -260,9 +243,7 @@ impl FapiContext {
         let cstr_sh = CStringHolder::try_from(auth_sh)?;
         let cstr_lo = CStringHolder::try_from(auth_lo)?;
 
-        self.fapi_call(true, |context| unsafe {
-            fapi_sys::Fapi_Provision(context, cstr_eh.as_ptr(), cstr_sh.as_ptr(), cstr_lo.as_ptr())
-        })
+        self.fapi_call(true, |context| unsafe { fapi_sys::Fapi_Provision(context, cstr_eh.as_ptr(), cstr_sh.as_ptr(), cstr_lo.as_ptr()) })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -315,9 +296,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_data = CStringHolder::try_from(data)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Import(context, cstr_path.as_ptr(), cstr_data.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_Import(context, cstr_path.as_ptr(), cstr_data.as_ptr()) })
     }
 
     /// Duplicates the key pointed to by `key_to_duplicate`, inclduing all keys below it, and encrypts it using the public key pointed to by `new_parent_public_key`. The exported data will contain the re-wrapped key and then the JSON encoded policy.
@@ -330,11 +309,9 @@ impl FapiContext {
         let cstr_publickey = CStringHolder::try_from(new_parent_public_key)?;
         let mut encoded_subtree: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_ExportKey(context, cstr_duplicate.as_ptr(), cstr_publickey.as_ptr(), &mut encoded_subtree)
-        })
-        .and_then(|_| FapiMemoryHolder::from_str(encoded_subtree).to_string().ok_or(ERR_NO_RESULT_DATA))
-        .and_then(|exported_data| json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_ExportKey(context, cstr_duplicate.as_ptr(), cstr_publickey.as_ptr(), &mut encoded_subtree) })
+            .and_then(|_| FapiMemoryHolder::from_str(encoded_subtree).to_string().ok_or(ERR_NO_RESULT_DATA))
+            .and_then(|exported_data| json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
     }
 
     /// Exports a policy to a JSON encoded byte buffer.
@@ -344,11 +321,9 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut policy: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_ExportPolicy(context, cstr_path.as_ptr(), &mut policy)
-        })
-        .and_then(|_| FapiMemoryHolder::from_str(policy).to_string().ok_or(ERR_NO_RESULT_DATA))
-        .and_then(|exported_data| json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_ExportPolicy(context, cstr_path.as_ptr(), &mut policy) })
+            .and_then(|_| FapiMemoryHolder::from_str(policy).to_string().ok_or(ERR_NO_RESULT_DATA))
+            .and_then(|exported_data| json::parse(&exported_data[..]).map_err(|_error| ERR_NO_RESULT_DATA))
     }
 
     /// Get the public and private BLOBs of a TPM object. They can be loaded with a lower-level API such as the SAPI or the ESAPI.
@@ -402,15 +377,9 @@ impl FapiContext {
         let mut blob_data: *mut u8 = ptr::null_mut();
         let mut blob_size: usize = 0;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetEsysBlob(context, cstr_path.as_ptr(), &mut blob_type, &mut blob_data, &mut blob_size)
-        })
-        .and_then(|_| FapiMemoryHolder::from_raw(blob_data, blob_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
-        .and_then(|esys_blob| {
-            BlobType::try_from(blob_type)
-                .map(|type_flag| (type_flag, esys_blob))
-                .map_err(|_| ERR_NO_RESULT_DATA)
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetEsysBlob(context, cstr_path.as_ptr(), &mut blob_type, &mut blob_data, &mut blob_size) })
+            .and_then(|_| FapiMemoryHolder::from_raw(blob_data, blob_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+            .and_then(|esys_blob| BlobType::try_from(blob_type).map(|type_flag| (type_flag, esys_blob)).map_err(|_| ERR_NO_RESULT_DATA))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -436,14 +405,7 @@ impl FapiContext {
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_CreateNv(
-                context,
-                cstr_path.as_ptr(),
-                cstr_type.as_ptr(),
-                nvi_size,
-                cstr_poli.as_ptr(),
-                cstr_auth.as_ptr(),
-            )
+            fapi_sys::Fapi_CreateNv(context, cstr_path.as_ptr(), cstr_type.as_ptr(), nvi_size, cstr_poli.as_ptr(), cstr_auth.as_ptr())
         })
     }
 
@@ -462,11 +424,9 @@ impl FapiContext {
         let mut size: usize = 0;
         let mut logs: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvRead(context, cstr_path.as_ptr(), &mut data, &mut size, cond_out(&mut logs, request_log))
-        })
-        .and_then(|_| FapiMemoryHolder::from_raw(data, size).to_vec().ok_or(ERR_NO_RESULT_DATA))
-        .map(|result| (result, FapiMemoryHolder::from_str(logs).to_json()))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvRead(context, cstr_path.as_ptr(), &mut data, &mut size, cond_out(&mut logs, request_log)) })
+            .and_then(|_| FapiMemoryHolder::from_raw(data, size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+            .map(|result| (result, FapiMemoryHolder::from_str(logs).to_json()))
     }
 
     /// Convenience function to [`nv_read()`](FapiContext::nv_read) an **`u64`** value. Assumes "big endian" byte order.
@@ -483,9 +443,7 @@ impl FapiContext {
         fail_if_empty!(data);
         let cstr_path = CStringHolder::try_from(nv_path)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvWrite(context, cstr_path.as_ptr(), data.as_ptr(), data.len())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvWrite(context, cstr_path.as_ptr(), data.as_ptr(), data.len()) })
     }
 
     /// Convenience function to [`nv_write()`](FapiContext::nv_write) an **`u64`** value. Assumes "big endian" byte order.
@@ -522,9 +480,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_NvExtend(context, cstr_path.as_ptr(), data.as_ptr(), data.len(), cstr_logs.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvExtend(context, cstr_path.as_ptr(), data.as_ptr(), data.len(), cstr_logs.as_ptr()) })
     }
 
     /// Write the policyDigest of a policy to an NV index so it can be used in policies containing PolicyAuthorizeNV elements.
@@ -534,9 +490,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_WriteAuthorizeNv(context, cstr_path.as_ptr(), cstr_poli.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_WriteAuthorizeNv(context, cstr_path.as_ptr(), cstr_poli.as_ptr()) })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -551,9 +505,7 @@ impl FapiContext {
 
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_PcrExtend(context, pcr_no, data.as_ptr(), data.len(), cstr_logs.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_PcrExtend(context, pcr_no, data.as_ptr(), data.len(), cstr_logs.as_ptr()) })
     }
 
     /// Reads from a given PCR and returns the value and the event log.
@@ -570,11 +522,9 @@ impl FapiContext {
         let mut pcr_size: usize = 0usize;
         let mut log_data: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_PcrRead(context, pcr_no, &mut pcr_data, &mut pcr_size, cond_out(&mut log_data, request_log))
-        })
-        .and_then(|_| FapiMemoryHolder::from_raw(pcr_data, pcr_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
-        .map(|result| (result, FapiMemoryHolder::from_str(log_data).to_json()))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_PcrRead(context, pcr_no, &mut pcr_data, &mut pcr_size, cond_out(&mut log_data, request_log)) })
+            .and_then(|_| FapiMemoryHolder::from_raw(pcr_data, pcr_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+            .map(|result| (result, FapiMemoryHolder::from_str(log_data).to_json()))
     }
 
     /// Given a set of PCRs and a restricted signing key, it will sign those PCRs and return the quote.
@@ -626,20 +576,8 @@ impl FapiContext {
             )
         })
         .and_then(|_| FapiMemoryHolder::from_str(quote_info).to_json().ok_or(ERR_NO_RESULT_DATA))
-        .and_then(|info| {
-            FapiMemoryHolder::from_raw(signature_data, signature_size)
-                .to_vec()
-                .map(|data| (info, data))
-                .ok_or(ERR_NO_RESULT_DATA)
-        })
-        .map(|signature| {
-            (
-                signature.0,
-                signature.1,
-                FapiMemoryHolder::from_str(pcr_log).to_json(),
-                FapiMemoryHolder::from_str(certificate).to_string(),
-            )
-        })
+        .and_then(|info| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().map(|data| (info, data)).ok_or(ERR_NO_RESULT_DATA))
+        .map(|signature| (signature.0, signature.1, FapiMemoryHolder::from_str(pcr_log).to_json(), FapiMemoryHolder::from_str(certificate).to_string()))
     }
 
     /// Verifies that the data returned by a quote is valid. This includes:
@@ -698,14 +636,7 @@ impl FapiContext {
         let mut ciphertext_size: usize = 0;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Encrypt(
-                context,
-                cstr_path.as_ptr(),
-                plaintext.as_ptr(),
-                plaintext.len(),
-                &mut ciphertext_data,
-                &mut ciphertext_size,
-            )
+            fapi_sys::Fapi_Encrypt(context, cstr_path.as_ptr(), plaintext.as_ptr(), plaintext.len(), &mut ciphertext_data, &mut ciphertext_size)
         })
         .and_then(|_| FapiMemoryHolder::from_raw(ciphertext_data, ciphertext_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
@@ -722,14 +653,7 @@ impl FapiContext {
         let mut plaintext_size: usize = 0;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Decrypt(
-                context,
-                cstr_path.as_ptr(),
-                ciphertext.as_ptr(),
-                ciphertext.len(),
-                &mut plaintext_data,
-                &mut plaintext_size,
-            )
+            fapi_sys::Fapi_Decrypt(context, cstr_path.as_ptr(), ciphertext.as_ptr(), ciphertext.len(), &mut plaintext_data, &mut plaintext_size)
         })
         .and_then(|_| FapiMemoryHolder::from_raw(plaintext_data, plaintext_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
@@ -781,13 +705,7 @@ impl FapiContext {
             )
         })
         .and_then(|_| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
-        .map(|signature| {
-            (
-                signature,
-                FapiMemoryHolder::from_str(public_key_pem).to_string(),
-                FapiMemoryHolder::from_str(signer_crt_pem).to_string(),
-            )
-        })
+        .map(|signature| (signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string()))
     }
 
     /// Verifies a signature using a public key found in a keyPath.
@@ -856,10 +774,8 @@ impl FapiContext {
         let mut sealed_size: usize = 0;
         let mut sealed_data: *mut u8 = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Unseal(context, cstr_path.as_ptr(), &mut sealed_data, &mut sealed_size)
-        })
-        .and_then(|_| FapiMemoryHolder::from_raw(sealed_data, sealed_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_Unseal(context, cstr_path.as_ptr(), &mut sealed_data, &mut sealed_size) })
+            .and_then(|_| FapiMemoryHolder::from_raw(sealed_data, sealed_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -873,14 +789,12 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut cert_data_pem: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetCertificate(context, cstr_path.as_ptr(), &mut cert_data_pem)
-        })
-        .map(|_| FapiMemoryHolder::from_str(cert_data_pem).to_string())
-        .or_else(|error| match error {
-            ErrorCode::FapiError(BaseErrorCode::NoCert) => Ok(None),
-            _ => Err(error),
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetCertificate(context, cstr_path.as_ptr(), &mut cert_data_pem) })
+            .map(|_| FapiMemoryHolder::from_str(cert_data_pem).to_string())
+            .or_else(|error| match error {
+                ErrorCode::FapiError(BaseErrorCode::NoCert) => Ok(None),
+                _ => Err(error),
+            })
     }
 
     /// Sets an x509 cert into the path of a key.
@@ -892,9 +806,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_cert = CStringHolder::try_from(cert_data)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetCertificate(context, cstr_path.as_ptr(), cstr_cert.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetCertificate(context, cstr_path.as_ptr(), cstr_cert.as_ptr()) })
     }
 
     /// Returns the set of Platform certificates concatenated in a continuous buffer, if the platform provides platform certificates. Platform certificates for TPM 2.0 can consist not only of a single certificate but also a series of so-called delta certificates.
@@ -904,19 +816,12 @@ impl FapiContext {
         let mut certificate_size: usize = 0;
         let mut certificate_data: *mut u8 = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetPlatformCertificates(context, &mut certificate_data, &mut certificate_size)
-        })
-        .and_then(|_| {
-            FapiMemoryHolder::from_raw(certificate_data, certificate_size)
-                .to_vec()
-                .ok_or(ERR_NO_RESULT_DATA)
-                .map(Some)
-        })
-        .or_else(|error| match error {
-            ErrorCode::FapiError(BaseErrorCode::NoCert) => Ok(None),
-            _ => Err(error),
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetPlatformCertificates(context, &mut certificate_data, &mut certificate_size) })
+            .and_then(|_| FapiMemoryHolder::from_raw(certificate_data, certificate_size).to_vec().ok_or(ERR_NO_RESULT_DATA).map(Some))
+            .or_else(|error| match error {
+                ErrorCode::FapiError(BaseErrorCode::NoCert) => Ok(None),
+                _ => Err(error),
+            })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -930,10 +835,8 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let mut description: *mut c_char = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetDescription(context, cstr_path.as_ptr(), &mut description)
-        })
-        .map(|_| FapiMemoryHolder::from_str(description).to_string())
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetDescription(context, cstr_path.as_ptr(), &mut description) })
+            .map(|_| FapiMemoryHolder::from_str(description).to_string())
     }
 
     /// Allows an application to assign a human readable description to an object in the metadata store.
@@ -945,9 +848,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_desc = CStringHolder::try_from(description)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetDescription(context, cstr_path.as_ptr(), cstr_desc.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetDescription(context, cstr_path.as_ptr(), cstr_desc.as_ptr()) })
     }
 
     /// Returns the previously stored application data for an object.
@@ -958,10 +859,8 @@ impl FapiContext {
         let mut app_data_size: usize = 0;
         let mut app_data_buff: *mut u8 = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_GetAppData(context, cstr_path.as_ptr(), &mut app_data_buff, &mut app_data_size)
-        })
-        .map(|_| FapiMemoryHolder::from_raw(app_data_buff, app_data_size).to_vec())
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetAppData(context, cstr_path.as_ptr(), &mut app_data_buff, &mut app_data_size) })
+            .map(|_| FapiMemoryHolder::from_raw(app_data_buff, app_data_size).to_vec())
     }
 
     /// Associates an arbitrary data blob with a given object.
@@ -973,9 +872,7 @@ impl FapiContext {
         fail_if_opt_empty!(app_data);
         let cstr_path = CStringHolder::try_from(path)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetAppData(context, cstr_path.as_ptr(), opt_to_ptr(app_data), opt_to_len(app_data))
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAppData(context, cstr_path.as_ptr(), opt_to_ptr(app_data), opt_to_len(app_data)) })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -990,12 +887,7 @@ impl FapiContext {
         let mut list: *mut c_char = ptr::null_mut();
 
         self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_List(context, cstr_path.as_ptr(), &mut list) })
-            .and_then(|_| {
-                FapiMemoryHolder::from_str(list)
-                    .to_string()
-                    .map(|str| str.split(':').map(str::to_owned).collect())
-                    .ok_or(ERR_NO_RESULT_DATA)
-            })
+            .and_then(|_| FapiMemoryHolder::from_str(list).to_string().map(|str| str.split(':').map(str::to_owned).collect()).ok_or(ERR_NO_RESULT_DATA))
     }
 
     /// Deletes a given key, policy or NV index from the system.
@@ -1020,9 +912,7 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_auth = CStringHolder::try_from(auth)?;
 
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_ChangeAuth(context, cstr_path.as_ptr(), cstr_auth.as_ptr())
-        })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_ChangeAuth(context, cstr_path.as_ptr(), cstr_auth.as_ptr()) })
     }
 
     /// If a current policy happens to be a PolicyAuthorize, then for it to be used, the user must first satisfy a policy authorized by a having been signed (and made into a ticket) by an authorized party.
@@ -1035,13 +925,7 @@ impl FapiContext {
         let cstr_path_key = CStringHolder::try_from(key_path)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_AuthorizePolicy(
-                context,
-                cstr_path_pol.as_ptr(),
-                cstr_path_key.as_ptr(),
-                opt_to_ptr(ref_data),
-                opt_to_len(ref_data),
-            )
+            fapi_sys::Fapi_AuthorizePolicy(context, cstr_path_pol.as_ptr(), cstr_path_key.as_ptr(), opt_to_ptr(ref_data), opt_to_len(ref_data))
         })
     }
 
@@ -1055,8 +939,7 @@ impl FapiContext {
     pub fn get_tcti(&mut self) -> Result<TctiOpaqueContextBlob, ErrorCode> {
         let mut tcti: *mut fapi_sys::TSS2_TCTI_CONTEXT = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) })
-            .map(|_| tcti as TctiOpaqueContextBlob)
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) }).map(|_| tcti as TctiOpaqueContextBlob)
     }
 
     /// Returns an array of handles that can be polled on to get notified when data from the TPM or from a disk operation is available.
@@ -1152,12 +1035,14 @@ unsafe extern "C" fn auth_callback_entrypoint(
     if object_path.is_null() || auth.is_null() || user_data.is_null() {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (*(user_data as *mut AuthCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
-        Some(auth_value) => {
-            *auth = auth_value.as_ptr();
-            TSS2_RC_SUCCESS
+    unsafe {
+        match (*(user_data as *mut AuthCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
+            Some(auth_value) => {
+                *auth = auth_value.as_ptr();
+                TSS2_RC_SUCCESS
+            }
+            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
         }
-        _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
     }
 }
 
@@ -1185,20 +1070,22 @@ unsafe extern "C" fn sign_callback_entrypoint(
     {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (*(user_data as *mut SignCallback)).invoke(
-        CStr::from_ptr(object_path),
-        ptr_to_opt_cstr(description),
-        CStr::from_ptr(public_key),
-        ptr_to_opt_cstr(key_hint),
-        hash_alg,
-        slice::from_raw_parts(challenge_data, challenge_size),
-    ) {
-        Some(sign_value) => {
-            *signature_data = sign_value.as_ptr();
-            *signature_size = sign_value.len();
-            TSS2_RC_SUCCESS
+    unsafe {
+        match (*(user_data as *mut SignCallback)).invoke(
+            CStr::from_ptr(object_path),
+            ptr_to_opt_cstr(description),
+            CStr::from_ptr(public_key),
+            ptr_to_opt_cstr(key_hint),
+            hash_alg,
+            slice::from_raw_parts(challenge_data, challenge_size),
+        ) {
+            Some(sign_value) => {
+                *signature_data = sign_value.as_ptr();
+                *signature_size = sign_value.len();
+                TSS2_RC_SUCCESS
+            }
+            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
         }
-        _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
     }
 }
 
@@ -1214,16 +1101,18 @@ unsafe extern "C" fn branch_callback_entrypoint(
     if object_path.is_null() || branch_names.is_null() || num_branches == 0usize || selected.is_null() || user_data.is_null() {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (*(user_data as *mut BranCallback)).invoke(
-        CStr::from_ptr(object_path),
-        ptr_to_opt_cstr(description),
-        &ptr_to_cstr_vec(branch_names, num_branches)[..],
-    ) {
-        Some(bran_value) => {
-            *selected = bran_value;
-            TSS2_RC_SUCCESS
+    unsafe {
+        match (*(user_data as *mut BranCallback)).invoke(
+            CStr::from_ptr(object_path),
+            ptr_to_opt_cstr(description),
+            &ptr_to_cstr_vec(branch_names, num_branches)[..],
+        ) {
+            Some(bran_value) => {
+                *selected = bran_value;
+                TSS2_RC_SUCCESS
+            }
+            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
         }
-        _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
     }
 }
 
@@ -1232,8 +1121,10 @@ unsafe extern "C" fn action_callback_entrypoint(object_path: *const c_char, acti
     if object_path.is_null() || user_data.is_null() {
         return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
     }
-    match (*(user_data as *mut ActnCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
-        true => TSS2_RC_SUCCESS,
-        _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
+    unsafe {
+        match (*(user_data as *mut ActnCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
+            true => TSS2_RC_SUCCESS,
+            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
+        }
     }
 }

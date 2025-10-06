@@ -121,11 +121,7 @@ impl Flags<Self> for NvFlags {
     }
 
     fn validate(list: &[Self]) -> bool {
-        list.iter()
-            .map(|flag| matches!(flag, Self::BitField | Self::Counter | Self::PCR))
-            .map(usize::from)
-            .sum::<usize>()
-            < 2usize
+        list.iter().map(|flag| matches!(flag, Self::BitField | Self::Counter | Self::PCR)).map(usize::from).sum::<usize>() < 2usize
     }
 }
 
@@ -264,13 +260,7 @@ pub(crate) fn flags_to_string<T: Flags<T> + Ord + Debug + Copy>(list: Option<&[T
             if flags.is_empty() || contains_duplicates(flags) || (!T::validate(flags)) {
                 Err(crate::ErrorCode::InternalError(InternalError::InvalidArguments))
             } else {
-                Ok(Some(
-                    BTreeSet::from_iter(flags)
-                        .into_iter()
-                        .map(T::as_string)
-                        .collect::<Vec<Cow<'static, str>>>()
-                        .join(","),
-                ))
+                Ok(Some(BTreeSet::from_iter(flags).into_iter().map(T::as_string).collect::<Vec<Cow<'static, str>>>().join(",")))
             }
         }
         None => Ok(None), /*No flags, but that's okay!*/
@@ -294,7 +284,7 @@ fn contains_duplicates<T: Flags<T> + Ord + Copy>(list: &[T]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{flags_to_string, BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
+    use super::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags, flags_to_string};
     use std::num::NonZeroU32;
 
     #[test]
@@ -307,17 +297,19 @@ mod tests {
         assert!(flags_to_string::<QuoteFlags>(None).is_ok());
         assert!(flags_to_string::<PaddingFlags>(None).is_ok());
 
-        assert!(flags_to_string(Some(&[
-            KeyFlags::Decrypt,
-            KeyFlags::Exportable,
-            KeyFlags::NoDA,
-            KeyFlags::Persistent(index),
-            KeyFlags::Restricted,
-            KeyFlags::Sign,
-            KeyFlags::System,
-            KeyFlags::User
-        ]))
-        .is_ok());
+        assert!(
+            flags_to_string(Some(&[
+                KeyFlags::Decrypt,
+                KeyFlags::Exportable,
+                KeyFlags::NoDA,
+                KeyFlags::Persistent(index),
+                KeyFlags::Restricted,
+                KeyFlags::Sign,
+                KeyFlags::System,
+                KeyFlags::User
+            ]))
+            .is_ok()
+        );
 
         assert!(flags_to_string(Some(&[KeyFlags::Decrypt, KeyFlags::Decrypt])).is_err());
 

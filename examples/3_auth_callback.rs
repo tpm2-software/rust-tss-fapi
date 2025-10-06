@@ -5,7 +5,7 @@
  **********************************************************************************************/
 
 use env_logger::Builder as EnvLogger;
-use log::{debug, info, warn, LevelFilter};
+use log::{LevelFilter, debug, info, warn};
 use std::borrow::Cow;
 use tss2_fapi_rs::{AuthCallback, AuthCallbackParam, BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
 

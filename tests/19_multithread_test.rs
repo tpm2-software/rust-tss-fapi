@@ -7,7 +7,7 @@
 pub mod common;
 
 use common::{
-    crypto::{get_key_type, KeyType},
+    crypto::{KeyType, get_key_type},
     param::PASSWORD,
     random::create_seed,
     setup::TestConfiguration,

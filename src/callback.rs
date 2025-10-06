@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::{fapi_sys::TPM2_ALG_ID, memory::CStringHolder, HashAlgorithm};
+use crate::{HashAlgorithm, fapi_sys::TPM2_ALG_ID, memory::CStringHolder};
 use log::trace;
 use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug};
 
@@ -37,10 +37,7 @@ impl AuthCallback {
     ///
     /// The supplied `auth_fn` will be called whenever the FAPI requests authorization values from the application. This function receives an [`AuthCallbackParam`] as parameter; it shall return `Some(value)`, if an authorization value for the requested object is provided by the application, or `None`, if **no** authorization value is provided.
     pub fn new(auth_fn: impl Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + 'static + Send) -> Self {
-        Self {
-            auth_fn: Box::new(auth_fn),
-            auth_value: None,
-        }
+        Self { auth_fn: Box::new(auth_fn), auth_value: None }
     }
 
     /// Creates a new callback instance with additional data.
@@ -72,19 +69,13 @@ impl AuthCallback {
 
 impl<'a> AuthCallbackParam<'a> {
     fn new(object_path: &'a CStr, description: Option<&'a CStr>) -> Self {
-        Self {
-            object_path: object_path.to_str().unwrap_or_default(),
-            description: description.map(|str| str.to_str().unwrap_or_default()),
-        }
+        Self { object_path: object_path.to_str().unwrap_or_default(), description: description.map(|str| str.to_str().unwrap_or_default()) }
     }
 }
 
 impl Debug for AuthCallback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AuthCallback")
-            .field("auth_fn", &(*self.auth_fn).type_id())
-            .field("auth_value", &self.auth_value)
-            .finish()
+        f.debug_struct("AuthCallback").field("auth_fn", &(*self.auth_fn).type_id()).field("auth_value", &self.auth_value).finish()
     }
 }
 
@@ -127,10 +118,7 @@ impl SignCallback {
     ///
     /// The supplied `sign_fn` will be called whenever the FAPI requests a signature from the application. The purpose of this signature is to authorize a policy execution containing a *PolicySigned* element. This function receives a [`SignCallbackParam`] as parameter; it shall return `Some(value)`, if a signature value is provided by the application, or `None`, if **no** signature value is provided.
     pub fn new(sign_fn: impl Fn(SignCallbackParam) -> Option<Vec<u8>> + 'static + Send) -> Self {
-        Self {
-            sign_fn: Box::new(sign_fn),
-            sign_data: None,
-        }
+        Self { sign_fn: Box::new(sign_fn), sign_data: None }
     }
 
     /// Creates a new callback instance with additional data.
@@ -190,10 +178,7 @@ impl<'a> SignCallbackParam<'a> {
 
 impl Debug for SignCallback {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SignCallback")
-            .field("sign_fn", &(*self.sign_fn).type_id())
-            .field("sign_data", &self.sign_data)
-            .finish()
+        f.debug_struct("SignCallback").field("sign_fn", &(*self.sign_fn).type_id()).field("sign_data", &self.sign_data).finish()
     }
 }
 
@@ -247,11 +232,7 @@ impl BranCallback {
         trace!("BranCallback::invoke({:?})", &param);
         (self.bran_fn)(param).inspect(|index| {
             if *index >= branches.len() {
-                panic!(
-                    "The chosen branch index #{} is out of range! (must be in the 0..{} range)",
-                    index,
-                    branches.len() - 1usize
-                );
+                panic!("The chosen branch index #{} is out of range! (must be in the 0..{} range)", index, branches.len() - 1usize);
             }
         })
     }
@@ -325,10 +306,7 @@ impl ActnCallback {
 
 impl<'a> ActnCallbackParam<'a> {
     fn new(object_path: &'a CStr, action: Option<&'a CStr>) -> Self {
-        Self {
-            object_path: object_path.to_str().unwrap_or_default(),
-            action: action.map(|str| str.to_str().unwrap_or_default()),
-        }
+        Self { object_path: object_path.to_str().unwrap_or_default(), action: action.map(|str| str.to_str().unwrap_or_default()) }
     }
 }
 

@@ -81,14 +81,7 @@ fn test_unseal() {
         let original_data: [u8; 128usize] = generate_bytes(&mut rng);
 
         // Create new seal, if not already created
-        match context.create_seal(
-            key_path,
-            Some(SEAL_TYPE_FLAGS),
-            NonZeroUsize::new(original_data.len()).unwrap(),
-            None,
-            None,
-            Some(&original_data[..]),
-        ) {
+        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), NonZeroUsize::new(original_data.len()).unwrap(), None, None, Some(&original_data[..])) {
             Ok(_) => debug!("Seal created."),
             Err(error) => panic!("Seal creation has failed: {:?}", error),
         }

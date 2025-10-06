@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::fapi_sys::{constants, TPM2_ALG_ID};
+use crate::fapi_sys::{TPM2_ALG_ID, constants};
 
 /// Identifies the hash algorithm to be used, e.g. for signature creation.
 #[derive(Debug, PartialEq, Eq, Hash)]

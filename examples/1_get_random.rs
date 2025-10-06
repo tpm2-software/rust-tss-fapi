@@ -5,7 +5,7 @@
  **********************************************************************************************/
 
 use env_logger::Builder as EnvLogger;
-use log::{error, info, warn, LevelFilter};
+use log::{LevelFilter, error, info, warn};
 use std::{num::NonZeroUsize, panic};
 use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext};
 
@@ -29,10 +29,7 @@ fn main() {
 
     // Print library version
     let version_info = tss2_fapi_rs::get_version();
-    info!(
-        "Using tss2-fapi-rs package version: {}, built with native FAPI library version: {}",
-        version_info.0, version_info.1
-    );
+    info!("Using tss2-fapi-rs package version: {}, built with native FAPI library version: {}", version_info.0, version_info.1);
 
     // Create a new FAPI context
     info!("Creating FAPI context, please wait...");

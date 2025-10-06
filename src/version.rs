@@ -36,11 +36,7 @@ pub fn get_version() -> (&'static VersionInfo, &'static VersionInfo) {
 /// Parse a version string that is in the `"major.minor.patch"` format into a [`VersionInfo`] struct.
 fn parse_version(version_string: &str) -> VersionInfo {
     let mut tokens = version_string.split('.').map(|str| str.parse::<u16>().unwrap_or_default());
-    VersionInfo {
-        major: tokens.next().unwrap_or_default(),
-        minor: tokens.next().unwrap_or_default(),
-        patch: tokens.next().unwrap_or_default(),
-    }
+    VersionInfo { major: tokens.next().unwrap_or_default(), minor: tokens.next().unwrap_or_default(), patch: tokens.next().unwrap_or_default() }
 }
 
 /// Convert the `VersionInfo` struct to a string in the `"major.minor.patch"` format

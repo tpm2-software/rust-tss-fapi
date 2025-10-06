@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Changed
 
+- Rust edition has been changed to 2024.
 - Various dependencies have been updated to the latest version.
 
 ### Added

@@ -7,7 +7,7 @@
 pub mod common;
 
 use common::{
-    crypto::{get_key_type, KeyType},
+    crypto::{KeyType, get_key_type},
     param::PASSWORD,
     setup::TestConfiguration,
     tempfile::TempFile,
@@ -123,10 +123,7 @@ fn test_get_certificate() {
 
         // Verify
         debug!("Certificate: {:?}", recovered_cert);
-        assert!(recovered_cert
-            .expect("No certificate data avialble!")
-            .trim()
-            .eq_ignore_ascii_case(pem_data.trim()))
+        assert!(recovered_cert.expect("No certificate data avialble!").trim().eq_ignore_ascii_case(pem_data.trim()))
     });
 }
 

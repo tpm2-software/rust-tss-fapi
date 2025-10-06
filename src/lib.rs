@@ -450,4 +450,4 @@ pub use callback::{ActnCallback, ActnCallbackParam, AuthCallback, AuthCallbackPa
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
-pub use version::{get_version, VersionInfo};
+pub use version::{VersionInfo, get_version};

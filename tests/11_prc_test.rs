@@ -88,11 +88,7 @@ fn test_pcr_read() {
         debug!("PCR value #0: 0x{}", hex::encode(&pcr_value_0.0[..]));
 
         // Extend PCR with data
-        match context.pcr_extend(
-            PCR_NO[i % PCR_NO.len()],
-            &generate_bytes::<128usize>(&mut rng)[..],
-            Some("{ \"test\": \"1st value\" }"),
-        ) {
+        match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], Some("{ \"test\": \"1st value\" }")) {
             Ok(_) => debug!("PCR extended."),
             Err(error) => panic!("PCR extension has failed: {:?}", error),
         }
@@ -109,11 +105,7 @@ fn test_pcr_read() {
         debug!("PCR value #1: 0x{}", hex::encode(&pcr_value_1.0[..]));
 
         // Extend PCR with data
-        match context.pcr_extend(
-            PCR_NO[i % PCR_NO.len()],
-            &generate_bytes::<128usize>(&mut rng)[..],
-            Some("{ \"test\": \"2nd value\" }"),
-        ) {
+        match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], Some("{ \"test\": \"2nd value\" }")) {
             Ok(_) => debug!("PCR extended."),
             Err(error) => panic!("PCR extension has failed: {:?}", error),
         }
@@ -159,11 +151,7 @@ fn test_pcr_read_with_quote() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Extend PCR with data
-        match context.pcr_extend(
-            PCR_NO[i % PCR_NO.len()],
-            &generate_bytes::<128usize>(&mut rng)[..],
-            Some("{ \"test\": \"1st value\" }"),
-        ) {
+        match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], Some("{ \"test\": \"1st value\" }")) {
             Ok(_) => debug!("PCR extended."),
             Err(error) => panic!("PCR extension has failed: {:?}", error),
         }
@@ -219,11 +207,7 @@ fn test_pcr_quote() {
         }
 
         // Prepare inputs
-        let pcr_list = [
-            PCR_NO[i % PCR_NO.len()],
-            PCR_NO[(i + 1usize) % PCR_NO.len()],
-            PCR_NO[(i + 2usize) % PCR_NO.len()],
-        ];
+        let pcr_list = [PCR_NO[i % PCR_NO.len()], PCR_NO[(i + 1usize) % PCR_NO.len()], PCR_NO[(i + 2usize) % PCR_NO.len()]];
         let qualifying_data = generate_bytes::<32usize>(&mut rng);
 
         // Create attestation
@@ -281,11 +265,7 @@ fn test_pcr_quote_with_log() {
         }
 
         // Prepare inputs
-        let pcr_list = [
-            PCR_NO[i % PCR_NO.len()],
-            PCR_NO[(i + 1usize) % PCR_NO.len()],
-            PCR_NO[(i + 2usize) % PCR_NO.len()],
-        ];
+        let pcr_list = [PCR_NO[i % PCR_NO.len()], PCR_NO[(i + 1usize) % PCR_NO.len()], PCR_NO[(i + 2usize) % PCR_NO.len()]];
         let qualifying_data = generate_bytes::<32usize>(&mut rng);
 
         // Create attestation
@@ -345,11 +325,7 @@ fn test_pcr_verify_quote() {
         }
 
         // Prepare inputs
-        let pcr_list = [
-            PCR_NO[i % PCR_NO.len()],
-            PCR_NO[(i + 1usize) % PCR_NO.len()],
-            PCR_NO[(i + 2usize) % PCR_NO.len()],
-        ];
+        let pcr_list = [PCR_NO[i % PCR_NO.len()], PCR_NO[(i + 1usize) % PCR_NO.len()], PCR_NO[(i + 2usize) % PCR_NO.len()]];
         let qualifying_data = generate_bytes::<32usize>(&mut rng);
 
         // Create attestation

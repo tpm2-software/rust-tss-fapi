@@ -69,8 +69,8 @@ mod tests {
     use std::{
         collections::VecDeque,
         sync::{
-            atomic::{AtomicUsize, Ordering},
             Arc, Barrier, RwLock,
+            atomic::{AtomicUsize, Ordering},
         },
         thread,
     };

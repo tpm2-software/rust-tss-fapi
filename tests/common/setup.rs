@@ -82,12 +82,8 @@ impl<'a> TestConfiguration<'a> {
         let tcti_conf = option_env!("FAPI_RS_TEST_TCTI").unwrap_or(TCTI_DEFAULT_VALUE);
         let prof_name = option_env!("FAPI_RS_TEST_PROF").unwrap_or(PROF_DEFAULT_VALUE);
 
-        let regex_swtpm = REGEX_SWTPM.get_or_init(|| {
-            RegexBuilder::new(r"^\s*swtpm\s*:\s*host\s*=\s*([^\s,]+)\s*,\s*port\s*=\s*([^\s,]+)")
-                .case_insensitive(true)
-                .build()
-                .unwrap()
-        });
+        let regex_swtpm = REGEX_SWTPM
+            .get_or_init(|| RegexBuilder::new(r"^\s*swtpm\s*:\s*host\s*=\s*([^\s,]+)\s*,\s*port\s*=\s*([^\s,]+)").case_insensitive(true).build().unwrap());
 
         if let Some(capture) = regex_swtpm.captures(tcti_conf) {
             let (host, port) = (capture.get(1).unwrap().as_str(), capture.get(2).unwrap().as_str().parse::<u16>().unwrap());
@@ -115,15 +111,11 @@ impl<'a> TestConfiguration<'a> {
             Self::write_fapi_config(&conf_file, &data_path, &work_path, prof_name, tcti_conf);
         }
 
-        env::set_var("TSS2_FAPICONF", conf_file.to_str().unwrap());
-
-        Self {
-            uniq_lock,
-            prof_name,
-            data_path,
-            work_path,
-            finalizer,
+        unsafe {
+            env::set_var("TSS2_FAPICONF", conf_file.to_str().unwrap());
         }
+
+        Self { uniq_lock, prof_name, data_path, work_path, finalizer }
     }
 
     fn write_fapi_config(conf_file: &Path, data_path: &Path, work_path: &Path, prof_name: &str, tcti_conf: &str) {
