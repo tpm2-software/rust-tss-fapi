@@ -16,6 +16,9 @@ RUN apt-get update -qq && \
         flex \
         gettext \
         git \
+        gtk-doc-tools \
+        libclang-dev \
+        libltdl-dev \
         libtool \
         pkg-config && \
     rm -rf /var/lib/apt/lists && \
