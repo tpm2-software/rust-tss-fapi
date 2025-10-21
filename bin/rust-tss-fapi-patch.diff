@@ -1,0 +1,17 @@
+diff --git a/build.rs b/build.rs
+index 0e2fef8..6c74dba 100644
+--- a/build.rs
++++ b/build.rs
+@@ -110,7 +110,11 @@ fn detect_tss2_library() -> Result<LibraryConfig, Error> {
+ /// Persist the version string to output file, so that it can be evaluated in the code at runtime
+ fn write_version_string(path: &Path, version_string: &str) -> Result<(), IoError> {
+     // Parse the version string
+-    let captures = REGEX_VERSION.captures(version_string.trim_ascii()).expect("Invalid version string!");
++    let captures = match REGEX_VERSION.captures(version_string.trim_ascii()) {
++        Some(lib_version) => lib_version,
++        _ => REGEX_VERSION.captures(LIBRARY_MIN_VERSION).unwrap(),
++    };
++
+     let vers_major = captures.get(1).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
+     let vers_minor = captures.get(2).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
+     let vers_patch = captures.get(3).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
