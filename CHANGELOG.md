@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.6.2] - 2025-12-12
+
+### Changed
+
+- Various dependencies have been updated to the latest version.
+- Updated the Docker images used for building/testing.
+
 ## [0.6.1] - 2025-11-07
 
 ### Changed
