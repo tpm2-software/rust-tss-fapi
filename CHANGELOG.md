@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 ### Changed
 
 - Improved `FapiContext::import()` to support the import of either a JSON object (e.g. TPM policy) or a PEM encoded key.
+- Updated the Docker images used for building/testing.
 - Various dependencies have been updated to the latest version.
 
 ## [0.6.2] - 2025-12-12

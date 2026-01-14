@@ -15,7 +15,7 @@ use function_name::named;
 use log::debug;
 use serial_test::serial;
 use std::collections::HashSet;
-use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
+use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, ImportData, KeyFlags};
 
 mk_auth_callback!(my_auth_callback, PASSWORD);
 mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
@@ -138,6 +138,43 @@ fn test_export_key() {
         let loaded_public_key = get_key_type(configuration.prof_name()).map(|key_type| load_public_key(pem_data, key_type));
         assert!(loaded_public_key.is_some());
         debug!("Public key: {:?}", loaded_public_key);
+    });
+}
+
+/// Test the `import()` function with an existing public key
+#[test]
+#[serial]
+#[named]
+fn test_import_key() {
+    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+
+    const PUBLIC_KEY_DATA: &str = "-----BEGIN PUBLIC KEY-----\n\
+                                   MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiKgY4DR7lSHMIwbAYx1XjjLMGpnS\n\
+                                   hR8xcZcwqU0buOwag/A8+t+iKEc33NZerJPVszwpFGIQsu5FupP9RgcDXg==\n\
+                                   -----END PUBLIC KEY-----\n";
+    repeat_test!(|i| {
+        let key_path = &format!("ext/myImportedKey{}", i);
+
+        // Create FAPI context
+        let mut context = match FapiContext::new() {
+            Ok(fpai_ctx) => fpai_ctx,
+            Err(error) => panic!("Failed to create context: {:?}", error),
+        };
+
+        // Initialize TPM, if not already initialized
+        tpm_initialize!(context, PASSWORD, my_auth_callback);
+
+        // Import the existing public key
+        match context.import(key_path, ImportData::try_from(PUBLIC_KEY_DATA).unwrap()) {
+            Ok(_) => debug!("Key imported successfully."),
+            Err(error) => panic!("Key import has failed: {:?}", error),
+        }
+
+        // Check that the imported key exists after the import
+        match context.get_description(key_path) {
+            Ok(_) => (),
+            Err(error) => panic!("Imported key does not exist: {:?}", error),
+        }
     });
 }
 
