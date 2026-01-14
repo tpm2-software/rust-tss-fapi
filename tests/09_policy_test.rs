@@ -24,7 +24,7 @@ use std::{
     path::Path,
     sync::{Arc, Mutex},
 };
-use tss2_fapi_rs::{ActnCallback, ActnCallbackParam, BranCallback, BranCallbackParam, FapiContext, KeyFlags, SignCallback, SignCallbackParam};
+use tss2_fapi_rs::{ActnCallback, ActnCallbackParam, BranCallback, BranCallbackParam, FapiContext, ImportData, KeyFlags, SignCallback, SignCallbackParam};
 
 mk_auth_callback!(my_auth_callback, PASSWORD);
 mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
@@ -72,7 +72,7 @@ fn test_policy_signed_rsa() {
         }
 
         // Import policy
-        match context.import(pol_name, &policy_json) {
+        match context.import(pol_name, ImportData::from(&policy_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -131,7 +131,7 @@ fn test_policy_signed_ecc() {
         }
 
         // Import policy
-        match context.import(pol_name, &policy_json) {
+        match context.import(pol_name, ImportData::from(&policy_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -197,7 +197,7 @@ fn test_policy_or() {
         }
 
         // Import policy
-        match context.import(pol_name, &policy_json) {
+        match context.import(pol_name, ImportData::from(&policy_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -260,7 +260,7 @@ fn test_policy_action() {
         }
 
         // Import policy
-        match context.import(pol_name, &policy_json) {
+        match context.import(pol_name, ImportData::from(&policy_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };

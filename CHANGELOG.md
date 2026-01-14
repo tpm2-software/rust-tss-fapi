@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.7.0] - 2026-01-14
+
+### Changed
+
+- Improved `FapiContext::import()` to support the import of either a JSON object (e.g. TPM policy) or a PEM encoded key.
+- Various dependencies have been updated to the latest version.
+
 ## [0.6.2] - 2025-12-12
 
 ### Changed

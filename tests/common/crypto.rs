@@ -62,6 +62,7 @@ pub enum PublicKey {
 
 /// Wrapper for the private key data
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum PrivateKey {
     RsaKey(RsaPrivateKey),
     EccKey(EccPrivateKey),

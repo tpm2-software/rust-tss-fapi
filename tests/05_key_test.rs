@@ -265,7 +265,7 @@ fn test_get_tpm_blobs_with_private() {
         debug!("Private key: {}", hex::encode(sec_key));
 
         // Print the policy, if any:
-        assert!(blobs.2.as_ref().map_or(true, |policy| !policy.is_empty()));
+        assert!(blobs.2.as_ref().is_none_or(|policy| !policy.is_empty()));
         debug!("Policy: {:?}", blobs.2)
     });
 }

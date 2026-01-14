@@ -15,13 +15,16 @@ use std::{
     sync::RwLock,
 };
 
-use crate::fapi_sys::{
-    self, FAPI_CONTEXT, TPM2_RC, TSS2_RC,
-    constants::{self, TSS2_RC_SUCCESS},
-};
 use crate::marshal::u64_from_be;
 use crate::memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr};
 use crate::{BaseErrorCode, BlobType, ErrorCode, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags, flags::flags_to_string};
+use crate::{
+    ImportData,
+    fapi_sys::{
+        self, FAPI_CONTEXT, TPM2_RC, TSS2_RC,
+        constants::{self, TSS2_RC_SUCCESS},
+    },
+};
 use crate::{
     callback::{ActnCallback, AuthCallback, BranCallback, SignCallback},
     locking::LockGuard,
@@ -291,8 +294,10 @@ impl FapiContext {
 
     /// Imports a JSON encoded policy, policy template or key and stores it at the given path.
     ///
+    /// The [`data`](crate::ImportData) to be imported can be a [`JsonValue`](json::JsonValue), e.g., a JSON encoded policy, or a string containing a PEM encoded key.
+    ///
     /// *See also:* [`Fapi_Import()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___import.html)
-    pub fn import(&mut self, path: &str, data: &JsonValue) -> Result<(), ErrorCode> {
+    pub fn import(&mut self, path: &str, data: ImportData) -> Result<(), ErrorCode> {
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_data = CStringHolder::try_from(data)?;
 

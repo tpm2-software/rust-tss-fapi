@@ -131,7 +131,7 @@ fn test_sign_with_pubkey() {
         debug!("Signature value: {}", hex::encode(signature_data));
 
         // Print the public key
-        assert!(signature.1.as_ref().map_or(false, |pem_data| !pem_data.is_empty()));
+        assert!(signature.1.as_ref().is_some_and(|pem_data| !pem_data.is_empty()));
         debug!("Public key: \"{}\"", signature.1.unwrap_or_default());
 
         // Print the certificate, if any:

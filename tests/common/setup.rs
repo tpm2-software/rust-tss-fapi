@@ -105,7 +105,7 @@ impl<'a> TestConfiguration<'a> {
         let conf_file = work_path.join("config.json");
         debug!("FAPI conf file: \"{}\"", conf_file.to_str().unwrap());
 
-        if fs::metadata(&conf_file).map_or(false, |file_info| file_info.is_file()) {
+        if fs::metadata(&conf_file).is_ok_and(|file_info| file_info.is_file()) {
             debug!("Re-using the existing FAPI configuration!");
         } else {
             Self::write_fapi_config(&conf_file, &data_path, &work_path, prof_name, tcti_conf);
@@ -158,7 +158,7 @@ impl<'a> TestConfiguration<'a> {
 
         for entry in fs::read_dir(data_path.join("profiles")).unwrap().flatten() {
             let fname = entry.file_name();
-            if fname.to_str().map_or(false, |str| str.starts_with("P_")) {
+            if fname.to_str().is_some_and(|str| str.starts_with("P_")) {
                 let (path_src, path_dst) = (entry.path(), prof_path.join(fname));
                 debug!("Copy: {:?} -> {:?}", path_src, path_dst);
                 fs::copy(path_src, path_dst).expect("Failed to copy file!");

@@ -22,7 +22,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicI64, Ordering},
 };
-use tss2_fapi_rs::{ActnCallback, ActnCallbackParam, FapiContext, KeyFlags};
+use tss2_fapi_rs::{ActnCallback, ActnCallbackParam, FapiContext, ImportData, KeyFlags};
 
 mk_auth_callback!(my_auth_callback, PASSWORD);
 mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
@@ -87,7 +87,7 @@ fn test_policy_authorize_pubkey() {
         let policy_authorize_json = create_authorize_policy_with_public_key(&policy_siging_public_key[..], None).expect("Failed to create policy!");
 
         // Import policy
-        match context.import(pol_name[0], &policy_authorize_json) {
+        match context.import(pol_name[0], ImportData::from(&policy_authorize_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -106,7 +106,7 @@ fn test_policy_authorize_pubkey() {
         let policy_name_hash_json = create_name_hash_policy(key_path[1]).expect("Failed to create policy!");
 
         // Import new policy
-        match context.import(pol_name[1], &policy_name_hash_json) {
+        match context.import(pol_name[1], ImportData::from(&policy_name_hash_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -153,7 +153,7 @@ fn test_policy_authorize_pubkey() {
         };
 
         // Import authorized policy
-        match context.import(pol_name[1], &authorized_policy_json) {
+        match context.import(pol_name[1], ImportData::from(&authorized_policy_json)) {
             Ok(_) => debug!("Authorized policy imported."),
             Err(error) => panic!("Failed to import authorized policy: {:?}", error),
         };
@@ -219,7 +219,7 @@ fn test_policy_authorize_path() {
         let policy_authorize_json = create_authorize_policy_with_key_path(key_path[0], None).expect("Failed to create policy!");
 
         // Import policy
-        match context.import(pol_name[0], &policy_authorize_json) {
+        match context.import(pol_name[0], ImportData::from(&policy_authorize_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -238,7 +238,7 @@ fn test_policy_authorize_path() {
         let policy_name_hash_json = create_name_hash_policy(key_path[1]).expect("Failed to create policy!");
 
         // Import new policy
-        match context.import(pol_name[1], &policy_name_hash_json) {
+        match context.import(pol_name[1], ImportData::from(&policy_name_hash_json)) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -285,7 +285,7 @@ fn test_policy_authorize_path() {
         };
 
         // Import authorized policy
-        match context.import(pol_name[1], &authorized_policy_json) {
+        match context.import(pol_name[1], ImportData::from(&authorized_policy_json)) {
             Ok(_) => debug!("Authorized policy imported."),
             Err(error) => panic!("Failed to import authorized policy: {:?}", error),
         };

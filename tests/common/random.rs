@@ -5,7 +5,7 @@
  **********************************************************************************************/
 
 use rand::{Rng, RngCore};
-use std::{fmt::Debug, usize};
+use std::{array, fmt::Debug};
 
 /// Create seed value from index
 pub fn create_seed<const N: usize, T: TryInto<u64> + Debug>(value: T) -> [u8; N]
@@ -37,9 +37,6 @@ pub fn generate_string<const N: usize>(rand_gen: &mut impl RngCore) -> String {
         ']', '^', ' ', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
         '{', '|', '}', '~',
     ];
-    let mut rand_str = ['\0'; N];
-    for i in 0..N {
-        rand_str[i] = ASCII_PRINTABLE[rand_gen.random_range(0..ASCII_PRINTABLE.len())];
-    }
+    let rand_str: [char; N] = array::from_fn(|_| ASCII_PRINTABLE[rand_gen.random_range(0..ASCII_PRINTABLE.len())]);
     String::from_iter(rand_str)
 }

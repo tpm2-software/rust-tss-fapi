@@ -5,7 +5,7 @@
  **********************************************************************************************/
 
 use log::info;
-use std::{sync::OnceLock, usize};
+use std::sync::OnceLock;
 
 /* Defaults */
 const LOOPS_DEFAULT_VALUE: usize = 3;

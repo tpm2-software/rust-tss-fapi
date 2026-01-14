@@ -164,7 +164,7 @@ fn test_pcr_read_with_quote() {
 
         // Verify
         assert!(pcr_value.0.len() >= 20usize);
-        assert!(pcr_value.1.as_ref().map_or(false, |log_data| !log_data.is_empty()));
+        assert!(pcr_value.1.as_ref().is_some_and(|log_data| !log_data.is_empty()));
         debug!("PCR value: 0x{}", hex::encode(&pcr_value.0[..]));
         debug!("PCR log: {:?}", pcr_value.1.unwrap().to_string());
     });
@@ -283,8 +283,8 @@ fn test_pcr_quote_with_log() {
         // Verify
         assert!(!attestation.0.is_empty());
         assert!(attestation.1.len() >= 20usize);
-        assert!(attestation.2.map_or(false, |log_data| !log_data.is_empty()));
-        assert!(attestation.3.map_or(true, |cert| !cert.is_empty()));
+        assert!(attestation.2.is_some_and(|log_data| !log_data.is_empty()));
+        assert!(attestation.3.is_none_or(|cert| !cert.is_empty()));
     });
 }
 

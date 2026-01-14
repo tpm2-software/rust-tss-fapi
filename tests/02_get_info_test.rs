@@ -70,7 +70,7 @@ fn test_to_destruction() {
         const LOOP_COUNT: usize = 99_991_usize;
         let mut previous_update: Option<Instant> = None;
         for j in 0..LOOP_COUNT {
-            if log::log_enabled!(Level::Info) && previous_update.map_or(true, |ts| ts.elapsed().as_secs() >= 5u64) {
+            if log::log_enabled!(Level::Info) && previous_update.is_none_or(|ts| ts.elapsed().as_secs() >= 5u64) {
                 output_progress(j, LOOP_COUNT);
                 previous_update = Some(Instant::now());
             }
