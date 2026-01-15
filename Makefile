@@ -4,12 +4,17 @@ include tools/docker/docker.mk
 
 DOCKER := $(foreach target,$(DOCKER_TARGETS),docker.$(target))
 
-.PHONY: all build check clean codecov docs examples libtpms package publish tests $(DOCKER)
+.PHONY: all build check clean codecov docs examples fixup libtpms package publish tests $(DOCKER)
 
 all: clean check build
 
 check:
-	cargo check --release --locked --all-targets
+	cargo check --release --locked --all-features --all-targets
+
+fixup: check
+	cargo upgrade && cargo update
+	cargo fmt --all
+	cargo clippy --all-features --all-targets
 
 tests:
 	CARGO_PROFILE_RELEASE_DEBUG=true \

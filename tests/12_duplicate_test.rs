@@ -8,10 +8,12 @@ pub mod common;
 
 use common::{param::PASSWORD, setup::TestConfiguration};
 use function_name::named;
-use json::{Error as JsonError, JsonValue};
 use log::debug;
 use serial_test::serial;
-use tss2_fapi_rs::{FapiContext, ImportData, KeyFlags};
+use tss2_fapi_rs::{
+    FapiContext, ImportData, KeyFlags,
+    json::{Error as JsonError, JsonValue},
+};
 
 mk_auth_callback!(my_auth_callback, PASSWORD);
 mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);

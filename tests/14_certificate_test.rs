@@ -13,14 +13,13 @@ use common::{
     tempfile::TempFile,
 };
 use function_name::named;
-use json::JsonValue;
 use log::{debug, warn};
 use serial_test::serial;
 use std::{
     fs,
     process::{Command, Stdio},
 };
-use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
+use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, KeyFlags, json::JsonValue};
 
 mk_auth_callback!(my_auth_callback, PASSWORD);
 mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);

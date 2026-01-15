@@ -453,3 +453,6 @@ pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
 pub use types::{ImportData, QuoteResult, SignResult, TpmBlobs};
 pub use version::{VersionInfo, get_version};
+
+// Re-export JSON module
+pub use ::json;

@@ -13,7 +13,6 @@ use common::{
     setup::TestConfiguration,
 };
 use function_name::named;
-use json::JsonValue;
 use log::{debug, trace, warn};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -24,7 +23,9 @@ use std::{
     path::Path,
     sync::{Arc, Mutex},
 };
-use tss2_fapi_rs::{ActnCallback, ActnCallbackParam, BranCallback, BranCallbackParam, FapiContext, ImportData, KeyFlags, SignCallback, SignCallbackParam};
+use tss2_fapi_rs::{
+    ActnCallback, ActnCallbackParam, BranCallback, BranCallbackParam, FapiContext, ImportData, KeyFlags, SignCallback, SignCallbackParam, json::JsonValue,
+};
 
 mk_auth_callback!(my_auth_callback, PASSWORD);
 mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);

@@ -4,14 +4,13 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use json::JsonValue;
 use std::{
     borrow::Cow,
     ffi::{CStr, CString, NulError, c_char, c_void},
     ptr, slice,
 };
 
-use crate::{ErrorCode, ImportData, fapi_sys, types::ImportDataVariant};
+use crate::{ErrorCode, ImportData, fapi_sys, json::JsonValue, types::ImportDataVariant};
 
 #[cfg(unix)]
 use libc::explicit_bzero;
@@ -320,7 +319,7 @@ fn cstring_from_cow(str: Cow<'static, str>) -> Result<CString, NulError> {
 #[cfg(test)]
 mod tests {
     use super::CStringHolder;
-    use json::JsonValue;
+    use crate::json::JsonValue;
     use std::{borrow::Cow, ptr};
 
     #[test]
