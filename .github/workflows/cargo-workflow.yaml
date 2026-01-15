@@ -89,7 +89,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Integration tests
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  tests:
+  tests-native:
     name: cargo test
     needs: [format, checks]
     strategy:
@@ -110,6 +110,23 @@ jobs:
       - run: |
           make docker.swtpm DETACH=1
           make tests RUST_LOG=info TSS2_LOG=all+none FAPI_RS_TEST_PROF=${{ matrix.profile }}
+          make docker.down
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Docker-based tests
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  tests-docker:
+    name: docker tests
+    needs: [format, checks]
+    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          cache: false
+      - run: |
+          make docker.tests
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Code coverage analysis (codecov)
@@ -147,7 +164,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   build:
     name: cargo build
-    needs: [examples, tests]
+    needs: [examples, tests-native, tests-docker]
     strategy:
       fail-fast: false
       matrix:
@@ -183,7 +200,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   docs:
     name: cargo doc
-    needs: [examples, tests]
+    needs: [examples, tests-native, tests-docker]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v4
@@ -207,7 +224,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   package:
     name: cargo package
-    needs: [examples, tests]
+    needs: [examples, tests-native, tests-docker]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v4
