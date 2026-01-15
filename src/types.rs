@@ -13,7 +13,7 @@ use json::JsonValue;
 
 /// Variant that holds the actual import data
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum ImportDataInner<'a> {
+pub(crate) enum ImportDataVariant<'a> {
     Pem(&'a str),
     Json(&'a JsonValue),
 }
@@ -22,7 +22,7 @@ pub(crate) enum ImportDataInner<'a> {
 ///
 /// Instances of this struct may be used with the [`FapiContext::import()`](crate::FapiContext::import) function.
 #[derive(Clone, Copy, Debug)]
-pub struct ImportData<'a>(pub(crate) ImportDataInner<'a>);
+pub struct ImportData<'a>(ImportDataVariant<'a>);
 
 impl<'a> ImportData<'a> {
     /// Attempts to create a new `ImportData` from the given `JsonValue` reference.
@@ -31,7 +31,11 @@ impl<'a> ImportData<'a> {
     ///
     /// The JSON data will be validated, by the FAPI, when it is actually used.
     pub fn from_json(json_value: &'a JsonValue) -> Result<Self, ErrorCode> {
-        if !json_value.is_empty() { Ok(Self(ImportDataInner::Json(json_value))) } else { Err(ErrorCode::InternalError(InternalError::InvalidArguments)) }
+        if json_value.is_object() && (!json_value.is_empty()) {
+            Ok(Self(ImportDataVariant::Json(json_value)))
+        } else {
+            Err(ErrorCode::InternalError(InternalError::InvalidArguments))
+        }
     }
 
     /// Attempts to create a new `ImportData` from the given PEM (Privacy-Enhanced Mail) encoded string.
@@ -45,10 +49,14 @@ impl<'a> ImportData<'a> {
             || pem_data.starts_with("-----BEGIN RSA PRIVATE KEY-----")
             || pem_data.starts_with("-----BEGIN EC PRIVATE KEY-----")
         {
-            Ok(Self(ImportDataInner::Pem(pem_data)))
+            Ok(Self(ImportDataVariant::Pem(pem_data)))
         } else {
             Err(ErrorCode::InternalError(InternalError::InvalidArguments))
         }
+    }
+
+    pub(crate) fn into_inner(self) -> ImportDataVariant<'a> {
+        self.0
     }
 }
 
@@ -67,6 +75,9 @@ pub struct SignResult {
 
 impl SignResult {
     pub(crate) fn from(sign_value: Vec<u8>, public_key: Option<String>, certificate: Option<String>) -> Self {
+        assert!(!sign_value.is_empty());
+        assert!(public_key.as_ref().is_none_or(|value| !value.is_empty()));
+        assert!(certificate.as_ref().is_none_or(|value| !value.is_empty()));
         Self { sign_value, public_key, certificate }
     }
 }
@@ -87,6 +98,11 @@ pub struct QuoteResult {
 
 impl QuoteResult {
     pub(crate) fn from(quote_info: JsonValue, signature: Vec<u8>, prc_log: Option<JsonValue>, certificate: Option<String>) -> Self {
+        assert!(!quote_info.is_empty());
+        assert!(!signature.is_empty());
+        assert!(prc_log.as_ref().is_none_or(|value| !value.is_empty()));
+        assert!(prc_log.as_ref().is_none_or(|value| !value.is_empty()));
+        assert!(certificate.as_ref().is_none_or(|value| !value.is_empty()));
         Self { quote_info, signature, prc_log, certificate }
     }
 }
@@ -106,6 +122,9 @@ pub struct TpmBlobs {
 
 impl TpmBlobs {
     pub(crate) fn from(public_key: Option<Vec<u8>>, private_key: Option<Vec<u8>>, policy: Option<JsonValue>) -> Self {
+        assert!(public_key.as_ref().is_none_or(|value| !value.is_empty()));
+        assert!(private_key.as_ref().is_none_or(|value| !value.is_empty()));
+        assert!(policy.as_ref().is_none_or(|value| !value.is_empty()));
         Self { public_key, private_key, policy }
     }
 }

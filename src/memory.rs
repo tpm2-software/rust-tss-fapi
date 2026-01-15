@@ -11,7 +11,7 @@ use std::{
     ptr, slice,
 };
 
-use crate::{ErrorCode, ImportData, fapi_sys, types::ImportDataInner};
+use crate::{ErrorCode, ImportData, fapi_sys, types::ImportDataVariant};
 
 #[cfg(unix)]
 use libc::explicit_bzero;
@@ -155,9 +155,9 @@ impl TryFrom<ImportData<'_>> for CStringHolder {
     type Error = ErrorCode;
 
     fn try_from(data: ImportData) -> Result<Self, Self::Error> {
-        match data.0 {
-            ImportDataInner::Json(json_value) => CStringHolder::try_from(json_value),
-            ImportDataInner::Pem(pem_data) => CStringHolder::try_from(pem_data),
+        match data.into_inner() {
+            ImportDataVariant::Json(json_value) => CStringHolder::try_from(json_value),
+            ImportDataVariant::Pem(pem_data) => CStringHolder::try_from(pem_data),
         }
     }
 }
