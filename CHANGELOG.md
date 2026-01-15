@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.8.0] - 2026-01-15
+
+### Added
+
+- Added constructor functions `from_json()` and `from_pem` to the `ImportData` struct.
+
+### Changed
+
+- Function `FapiContext::sign()` now returns a `SignResult` struct on success.
+- Function `FapiContext::quote()` now returns a `QuoteResult` struct on success.
+- Function `FapiContext::get_tpm_blobs()` now returns a `TpmBlobs` struct on success.
+
 ## [0.7.0] - 2026-01-14
 
 ### Changed
