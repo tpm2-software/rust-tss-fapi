@@ -15,8 +15,6 @@ use std::{
     sync::RwLock,
 };
 
-use crate::marshal::u64_from_be;
-use crate::memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr};
 use crate::{BaseErrorCode, BlobType, ErrorCode, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags, flags::flags_to_string};
 use crate::{
     ImportData,
@@ -24,6 +22,11 @@ use crate::{
         self, FAPI_CONTEXT, TPM2_RC, TSS2_RC,
         constants::{self, TSS2_RC_SUCCESS},
     },
+};
+use crate::{QuoteResult, TpmBlobs, marshal::u64_from_be};
+use crate::{
+    SignResult,
+    memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr},
 };
 use crate::{
     callback::{ActnCallback, AuthCallback, BranCallback, SignCallback},
@@ -36,11 +39,6 @@ const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError:
 
 /* Opaque type  */
 type TctiOpaqueContextBlob = *mut [u8; 0];
-
-/* Complex types */
-type TpmBlobs = (Option<Vec<u8>>, Option<Vec<u8>>, Option<JsonValue>);
-type SignResult = (Vec<u8>, Option<String>, Option<String>);
-type QuoteResult = (JsonValue, Vec<u8>, Option<JsonValue>, Option<String>);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///
@@ -336,10 +334,6 @@ impl FapiContext {
     /// The flags `get_pubkey`, `get_privkey` and `get_policy` control which BLOBs are requested. Even if a BLOB was requested, that BLOB may *not* be available, in which case a `None` value is returned.
     ///
     /// *See also:* [`Fapi_GetTpmBlobs()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___get_tpm_blobs.html)
-    ///
-    /// ###### Return Value
-    ///
-    /// **`(Option(public_key), Option(private_key), Option(policy))`**
     pub fn get_tpm_blobs(&mut self, key_path: &str, get_pubkey: bool, get_privkey: bool, get_policy: bool) -> Result<TpmBlobs, ErrorCode> {
         if !(get_pubkey || get_privkey || get_policy) {
             return Err(ERR_INVALID_ARGUMENTS); /* must request at least one kind of BLOB! */
@@ -365,7 +359,7 @@ impl FapiContext {
             )
         })
         .map(|_| {
-            (
+            TpmBlobs::from(
                 FapiMemoryHolder::from_raw(blob_pub_data, blob_pub_size).to_vec(),
                 FapiMemoryHolder::from_raw(blob_sec_data, blob_sec_size).to_vec(),
                 FapiMemoryHolder::from_str(policy_string).to_json(),
@@ -539,10 +533,6 @@ impl FapiContext {
     /// The flags `request_log` and `request_cert` control whether to request PCR log and/or certificate. Even if requested, a signer certificate may *not* be available, in which case a `None` value is returned.
     ///
     /// *See also:* [`Fapi_Quote()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___quote.html)
-    ///
-    /// ###### Return Value
-    ///
-    /// **`(quote_info, signature, Option(prc_log), Option(certificate))`**
     pub fn quote(
         &mut self,
         pcr_no: &[u32],
@@ -582,7 +572,9 @@ impl FapiContext {
         })
         .and_then(|_| FapiMemoryHolder::from_str(quote_info).to_json().ok_or(ERR_NO_RESULT_DATA))
         .and_then(|info| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().map(|data| (info, data)).ok_or(ERR_NO_RESULT_DATA))
-        .map(|signature| (signature.0, signature.1, FapiMemoryHolder::from_str(pcr_log).to_json(), FapiMemoryHolder::from_str(certificate).to_string()))
+        .map(|signature| {
+            QuoteResult::from(signature.0, signature.1, FapiMemoryHolder::from_str(pcr_log).to_json(), FapiMemoryHolder::from_str(certificate).to_string())
+        })
     }
 
     /// Verifies that the data returned by a quote is valid. This includes:
@@ -674,10 +666,6 @@ impl FapiContext {
     /// Note that this function can **not** sign the "plain" message! Use, e.g., the [`sha2`](https://crates.io/crates/sha2) crate for computing the digest to be signed!
     ///
     /// *See also:* [`Fapi_Sign()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___sign.html)
-    ///
-    /// ###### Return Value
-    ///
-    /// **`(signature_value, Option(public_key), Option(certificate))`**
     pub fn sign(
         &mut self,
         key_path: &str,
@@ -710,7 +698,9 @@ impl FapiContext {
             )
         })
         .and_then(|_| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
-        .map(|signature| (signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string()))
+        .map(|signature| {
+            SignResult::from(signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string())
+        })
     }
 
     /// Verifies a signature using a public key found in a keyPath.

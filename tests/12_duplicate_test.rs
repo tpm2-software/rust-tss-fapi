@@ -80,7 +80,7 @@ fn test_duplicate_key() {
         assert!(!json_public_key.is_empty());
 
         // Import public key
-        match context.import(new_parent, ImportData::from(&json_public_key)) {
+        match context.import(new_parent, ImportData::from_json(&json_public_key).unwrap()) {
             Ok(_) => debug!("Key imported."),
             Err(error) => panic!("Failed to import the key: {:?}", error),
         };
@@ -93,7 +93,7 @@ fn test_duplicate_key() {
         let policy_json = create_duplication_policy(new_parent).expect("Failed to create policy!");
 
         // Import policy
-        match context.import(dup_policy, ImportData::from(&policy_json)) {
+        match context.import(dup_policy, ImportData::from_json(&policy_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -123,7 +123,7 @@ fn test_duplicate_key() {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // Import wrapped key
-        match context.import(child_key2, ImportData::from(&json_wrapped_key)) {
+        match context.import(child_key2, ImportData::from_json(&json_wrapped_key).unwrap()) {
             Ok(_) => debug!("Key imported."),
             Err(error) => panic!("Failed to import the key: {:?}", error),
         };

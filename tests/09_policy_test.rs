@@ -72,7 +72,7 @@ fn test_policy_signed_rsa() {
         }
 
         // Import policy
-        match context.import(pol_name, ImportData::from(&policy_json)) {
+        match context.import(pol_name, ImportData::from_json(&policy_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -131,7 +131,7 @@ fn test_policy_signed_ecc() {
         }
 
         // Import policy
-        match context.import(pol_name, ImportData::from(&policy_json)) {
+        match context.import(pol_name, ImportData::from_json(&policy_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -197,7 +197,7 @@ fn test_policy_or() {
         }
 
         // Import policy
-        match context.import(pol_name, ImportData::from(&policy_json)) {
+        match context.import(pol_name, ImportData::from_json(&policy_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -260,7 +260,7 @@ fn test_policy_action() {
         }
 
         // Import policy
-        match context.import(pol_name, ImportData::from(&policy_json)) {
+        match context.import(pol_name, ImportData::from_json(&policy_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };

@@ -52,8 +52,8 @@ macro_rules! tpm_initialize {
         }
 
         match $context.provision(None, Some($password), None) {
-            Ok(_) => log::error!("Provisioned."),
-            Err(tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::AlreadyProvisioned)) => log::error!("TPM already provisioned."),
+            Ok(_) => log::debug!("Provisioned."),
+            Err(tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::AlreadyProvisioned)) => log::debug!("TPM already provisioned."),
             Err(error) => panic!("Provisioning has failed: {:?}", error),
         }
     };

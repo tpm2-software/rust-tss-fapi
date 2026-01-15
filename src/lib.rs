@@ -443,6 +443,7 @@ mod flags;
 mod locking;
 mod marshal;
 mod memory;
+mod types;
 mod version;
 
 pub use algorithm_id::HashAlgorithm;
@@ -450,5 +451,5 @@ pub use callback::{ActnCallback, ActnCallbackParam, AuthCallback, AuthCallbackPa
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
-pub use memory::ImportData;
+pub use types::{ImportData, QuoteResult, SignResult, TpmBlobs};
 pub use version::{VersionInfo, get_version};

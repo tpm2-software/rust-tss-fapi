@@ -165,15 +165,16 @@ fn test_import_key() {
         tpm_initialize!(context, PASSWORD, my_auth_callback);
 
         // Import the existing public key
-        match context.import(key_path, ImportData::try_from(PUBLIC_KEY_DATA).unwrap()) {
+        match context.import(key_path, ImportData::from_pem(PUBLIC_KEY_DATA).unwrap()) {
             Ok(_) => debug!("Key imported successfully."),
-            Err(error) => panic!("Key import has failed: {:?}", error),
+            Err(error) => panic!("The key could not be imported: {:?}", error),
         }
 
-        // Check that the imported key exists after the import
-        match context.get_description(key_path) {
-            Ok(_) => (),
-            Err(error) => panic!("Imported key does not exist: {:?}", error),
+        // Import the existing public key again (expected to fail!)
+        match context.import(key_path, ImportData::from_pem(PUBLIC_KEY_DATA).unwrap()) {
+            Err(ErrorCode::FapiError(BaseErrorCode::PathAlreadyExists)) => (),
+            Ok(_) => panic!("Key was imported again!"),
+            Err(error) => panic!("The key could not be imported: {:?}", error),
         }
     });
 }
@@ -250,13 +251,13 @@ fn test_get_tpm_blobs() {
         };
 
         // Verify public key
-        let pub_key = blobs.0.expect("No public key data has been returned!");
+        let pub_key = blobs.public_key.expect("No public key data has been returned!");
         assert!(pub_key.len() >= 32usize);
         debug!("Public key: {}", hex::encode(pub_key));
 
         // Verify private key
-        assert!(blobs.1.is_none());
-        assert!(blobs.2.is_none());
+        assert!(blobs.private_key.is_none());
+        assert!(blobs.policy.is_none());
     });
 }
 
@@ -292,18 +293,18 @@ fn test_get_tpm_blobs_with_private() {
         };
 
         // Verify public key
-        let pub_key = blobs.0.expect("No public key data has been returned!");
+        let pub_key = blobs.public_key.expect("No public key data has been returned!");
         assert!(pub_key.len() >= 32usize);
         debug!("Public key: {}", hex::encode(pub_key));
 
         // Verify private key
-        let sec_key = blobs.1.expect("No private key data has been returned!");
+        let sec_key = blobs.private_key.expect("No private key data has been returned!");
         assert!(sec_key.len() >= 32usize);
         debug!("Private key: {}", hex::encode(sec_key));
 
         // Print the policy, if any:
-        assert!(blobs.2.as_ref().is_none_or(|policy| !policy.is_empty()));
-        debug!("Policy: {:?}", blobs.2)
+        assert!(blobs.policy.as_ref().is_none_or(|policy| !policy.is_empty()));
+        debug!("Policy: {:?}", blobs.policy)
     });
 }
 

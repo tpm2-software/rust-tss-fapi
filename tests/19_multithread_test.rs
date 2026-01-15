@@ -106,14 +106,14 @@ fn test_multiple_threads() {
                     };
 
                     // Print the signature
-                    let signature_data: &[u8] = signature.0.as_ref();
+                    let signature_data: &[u8] = signature.sign_value.as_ref();
                     assert!(signature_data.len() >= 32usize);
                     debug!("Signature value: {}", hex::encode(signature_data));
 
                     // Lock the mutex (again) and verify the signature
                     let verify_result = {
                         let mut mutex_guard = thread_context.lock().unwrap();
-                        match mutex_guard.verify_signature(&thread_keypath, &digest, &signature.0[..]) {
+                        match mutex_guard.verify_signature(&thread_keypath, &digest, &signature.sign_value[..]) {
                             Ok(value) => value,
                             Err(error) => panic!("Failed to verify the signature: {:?}", error),
                         }

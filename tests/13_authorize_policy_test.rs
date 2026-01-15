@@ -87,7 +87,7 @@ fn test_policy_authorize_pubkey() {
         let policy_authorize_json = create_authorize_policy_with_public_key(&policy_siging_public_key[..], None).expect("Failed to create policy!");
 
         // Import policy
-        match context.import(pol_name[0], ImportData::from(&policy_authorize_json)) {
+        match context.import(pol_name[0], ImportData::from_json(&policy_authorize_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -106,7 +106,7 @@ fn test_policy_authorize_pubkey() {
         let policy_name_hash_json = create_name_hash_policy(key_path[1]).expect("Failed to create policy!");
 
         // Import new policy
-        match context.import(pol_name[1], ImportData::from(&policy_name_hash_json)) {
+        match context.import(pol_name[1], ImportData::from_json(&policy_name_hash_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -153,7 +153,7 @@ fn test_policy_authorize_pubkey() {
         };
 
         // Import authorized policy
-        match context.import(pol_name[1], ImportData::from(&authorized_policy_json)) {
+        match context.import(pol_name[1], ImportData::from_json(&authorized_policy_json).unwrap()) {
             Ok(_) => debug!("Authorized policy imported."),
             Err(error) => panic!("Failed to import authorized policy: {:?}", error),
         };
@@ -165,7 +165,7 @@ fn test_policy_authorize_pubkey() {
         };
 
         // Validate signature data
-        let signature_data: &[u8] = signature.0.as_ref();
+        let signature_data: &[u8] = signature.sign_value.as_ref();
         assert!(signature_data.len() >= 32usize);
         debug!("Signature value: {}", hex::encode(signature_data));
     });
@@ -219,7 +219,7 @@ fn test_policy_authorize_path() {
         let policy_authorize_json = create_authorize_policy_with_key_path(key_path[0], None).expect("Failed to create policy!");
 
         // Import policy
-        match context.import(pol_name[0], ImportData::from(&policy_authorize_json)) {
+        match context.import(pol_name[0], ImportData::from_json(&policy_authorize_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -238,7 +238,7 @@ fn test_policy_authorize_path() {
         let policy_name_hash_json = create_name_hash_policy(key_path[1]).expect("Failed to create policy!");
 
         // Import new policy
-        match context.import(pol_name[1], ImportData::from(&policy_name_hash_json)) {
+        match context.import(pol_name[1], ImportData::from_json(&policy_name_hash_json).unwrap()) {
             Ok(_) => debug!("Policy imported."),
             Err(error) => panic!("Failed to import policy: {:?}", error),
         };
@@ -285,7 +285,7 @@ fn test_policy_authorize_path() {
         };
 
         // Import authorized policy
-        match context.import(pol_name[1], ImportData::from(&authorized_policy_json)) {
+        match context.import(pol_name[1], ImportData::from_json(&authorized_policy_json).unwrap()) {
             Ok(_) => debug!("Authorized policy imported."),
             Err(error) => panic!("Failed to import authorized policy: {:?}", error),
         };
@@ -297,7 +297,7 @@ fn test_policy_authorize_path() {
         };
 
         // Validate signature data
-        let signature_data: &[u8] = signature.0.as_ref();
+        let signature_data: &[u8] = signature.sign_value.as_ref();
         assert!(signature_data.len() >= 32usize);
         debug!("Signature value: {}", hex::encode(signature_data));
     });

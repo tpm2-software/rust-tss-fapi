@@ -73,16 +73,16 @@ fn main() {
     };
 
     // Print signature value
-    info!("Signature: {}", hex::encode(&signature.0[..]));
+    info!("Signature: {}", hex::encode(&signature.sign_value[..]));
 
     // Simulate an attack on the siganture value!
     if !option_env!("ATTACK").unwrap_or_default().is_empty() {
         warn!("Disturbing the digest value !!!");
-        *signature.0.last_mut().unwrap() = signature.0.last().unwrap().wrapping_add(1u8);
+        *signature.sign_value.last_mut().unwrap() = signature.sign_value.last().unwrap().wrapping_add(1u8);
     }
 
     // Verify the signature
-    let verify_result = match context.verify_signature(MY_KEYPATH, &digest, &signature.0[..]) {
+    let verify_result = match context.verify_signature(MY_KEYPATH, &digest, &signature.sign_value[..]) {
         Ok(value) => value,
         Err(error) => panic!("Failed to verify the signature: {:?}", error),
     };

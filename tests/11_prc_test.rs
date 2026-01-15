@@ -217,14 +217,14 @@ fn test_pcr_quote() {
         };
 
         // Print attestation
-        debug!("QuoteInfo: {:?}", attestation.0);
-        debug!("Signature: {:?}", hex::encode(&attestation.1[..]));
+        debug!("QuoteInfo: {:?}", attestation.quote_info);
+        debug!("Signature: {:?}", hex::encode(&attestation.signature[..]));
 
         // Verify
-        assert!(!attestation.0.is_empty());
-        assert!(attestation.1.len() >= 20usize);
-        assert!(attestation.2.is_none());
-        assert!(attestation.3.is_none());
+        assert!(!attestation.quote_info.is_empty());
+        assert!(attestation.signature.len() >= 20usize);
+        assert!(attestation.prc_log.is_none());
+        assert!(attestation.certificate.is_none());
     });
 }
 
@@ -275,16 +275,16 @@ fn test_pcr_quote_with_log() {
         };
 
         // Print attestation
-        debug!("QuoteInfo: {:?}", attestation.0);
-        debug!("Signature: {:?}", hex::encode(&attestation.1[..]));
-        debug!("PCRLogOut: {:?}", attestation.2);
-        debug!("CertAsPem: {:?}", attestation.3);
+        debug!("QuoteInfo: {:?}", attestation.quote_info);
+        debug!("Signature: {:?}", hex::encode(&attestation.signature[..]));
+        debug!("PCRLogOut: {:?}", attestation.prc_log);
+        debug!("CertAsPem: {:?}", attestation.certificate);
 
         // Verify
-        assert!(!attestation.0.is_empty());
-        assert!(attestation.1.len() >= 20usize);
-        assert!(attestation.2.is_some_and(|log_data| !log_data.is_empty()));
-        assert!(attestation.3.is_none_or(|cert| !cert.is_empty()));
+        assert!(!attestation.quote_info.is_empty());
+        assert!(attestation.signature.len() >= 20usize);
+        assert!(attestation.prc_log.is_some_and(|log_data| !log_data.is_empty()));
+        assert!(attestation.certificate.is_none_or(|cert| !cert.is_empty()));
     });
 }
 
@@ -335,11 +335,11 @@ fn test_pcr_verify_quote() {
         };
 
         // Print attestation
-        debug!("QuoteInfo: {:?}", attestation.0);
-        debug!("Signature: {:?}", hex::encode(&attestation.1[..]));
+        debug!("QuoteInfo: {:?}", attestation.quote_info);
+        debug!("Signature: {:?}", hex::encode(&attestation.signature[..]));
 
         // Verify attestation
-        let verify_result = match context.verify_quote(key_path, Some(&qualifying_data[..]), &attestation.0, &attestation.1[..], None) {
+        let verify_result = match context.verify_quote(key_path, Some(&qualifying_data[..]), &attestation.quote_info, &attestation.signature[..], None) {
             Ok(data) => data,
             Err(error) => panic!("Verification of quote has failed: {:?}", error),
         };
@@ -349,10 +349,10 @@ fn test_pcr_verify_quote() {
         assert!(verify_result);
 
         // Modify signature value
-        let signature_mod = increment(&attestation.1[..]);
+        let signature_mod = increment(&attestation.signature[..]);
 
         // Verify attestation (again)
-        let verify_result = match context.verify_quote(key_path, Some(&qualifying_data[..]), &attestation.0, &signature_mod[..], None) {
+        let verify_result = match context.verify_quote(key_path, Some(&qualifying_data[..]), &attestation.quote_info, &signature_mod[..], None) {
             Ok(data) => data,
             Err(error) => panic!("Verification of quote has failed: {:?}", error),
         };
@@ -365,7 +365,7 @@ fn test_pcr_verify_quote() {
         let qualifying_mod = increment(&qualifying_data[..]);
 
         // Verify attestation (again)
-        let verify_result = match context.verify_quote(key_path, Some(&qualifying_mod[..]), &attestation.0, &attestation.1[..], None) {
+        let verify_result = match context.verify_quote(key_path, Some(&qualifying_mod[..]), &attestation.quote_info, &attestation.signature[..], None) {
             Ok(data) => data,
             Err(error) => panic!("Verification of quote has failed: {:?}", error),
         };

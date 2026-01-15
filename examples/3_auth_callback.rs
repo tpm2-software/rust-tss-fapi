@@ -77,7 +77,7 @@ fn main() {
     };
 
     // Print signature value
-    info!("Signature: {}", hex::encode(&signature.0[..]));
+    info!("Signature: {}", hex::encode(&signature.sign_value[..]));
 
     // Exit
     info!("Shutting down...");

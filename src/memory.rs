@@ -4,13 +4,14 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::{ErrorCode, InternalError, fapi_sys};
 use json::JsonValue;
 use std::{
     borrow::Cow,
     ffi::{CStr, CString, NulError, c_char, c_void},
     ptr, slice,
 };
+
+use crate::{ErrorCode, ImportData, fapi_sys, types::ImportDataInner};
 
 #[cfg(unix)]
 use libc::explicit_bzero;
@@ -35,57 +36,6 @@ macro_rules! fail_if_opt_empty {
             fail_if_empty!(strval)
         }
     };
-}
-
-// ==========================================================================
-// Import data
-// ==========================================================================
-
-/// Variant that holds the actual import data
-#[derive(Clone, Copy, Debug)]
-enum ImportVariant<'a> {
-    Pem(&'a str),
-    Json(&'a JsonValue),
-}
-
-/// Wrapper that contains either a [`&JsonValue`](json::JsonValue) or a PEM encoded [`&str`](core::primitive::str).
-///
-/// You can use the functions [`ImportData::from()`] or [`ImportData::try_from()`] to create a new instance of this struct.
-///
-/// Instances of this struct may be used with the [`FapiContext::import()`](crate::FapiContext::import) function.
-#[derive(Clone, Copy, Debug)]
-pub struct ImportData<'a> {
-    inner: ImportVariant<'a>,
-}
-
-impl<'a> From<&'a JsonValue> for ImportData<'a> {
-    /// Creates a new `ImportData` from the given `JsonValue` reference.
-    ///
-    /// The structure of the JSON data is **not** validated. It will be validated by the FAPI when it is actually used.
-    fn from(json_value: &'a JsonValue) -> Self {
-        Self { inner: ImportVariant::Json(json_value) }
-    }
-}
-
-impl<'a> TryFrom<&'a str> for ImportData<'a> {
-    type Error = ErrorCode;
-
-    /// Attempts to create a new `ImportData` from the given PEM (Privacy-Enhanced Mail) encoded string.
-    ///
-    /// This functions fails if the given string does **not** look like a PEM encoded key, but the PEM data is **not** fully validated.
-    ///
-    /// The PEM data will be validated by the FAPI when it is actually used.
-    fn try_from(pem_value: &'a str) -> Result<Self, Self::Error> {
-        if pem_value.starts_with("-----BEGIN PUBLIC KEY-----")
-            || pem_value.starts_with("-----BEGIN PRIVATE KEY-----")
-            || pem_value.starts_with("-----BEGIN RSA PRIVATE KEY-----")
-            || pem_value.starts_with("-----BEGIN EC PRIVATE KEY-----")
-        {
-            Ok(Self { inner: ImportVariant::Pem(pem_value) })
-        } else {
-            Err(ErrorCode::InternalError(InternalError::InvalidArguments))
-        }
-    }
 }
 
 // ==========================================================================
@@ -205,9 +155,9 @@ impl TryFrom<ImportData<'_>> for CStringHolder {
     type Error = ErrorCode;
 
     fn try_from(data: ImportData) -> Result<Self, Self::Error> {
-        match data.inner {
-            ImportVariant::Json(json_value) => CStringHolder::try_from(json_value),
-            ImportVariant::Pem(pem_data) => CStringHolder::try_from(pem_data),
+        match data.0 {
+            ImportDataInner::Json(json_value) => CStringHolder::try_from(json_value),
+            ImportDataInner::Pem(pem_data) => CStringHolder::try_from(pem_data),
         }
     }
 }

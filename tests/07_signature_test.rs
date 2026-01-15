@@ -73,13 +73,13 @@ fn test_sign() {
         };
 
         // Validate signature data
-        let signature_data: &[u8] = signature.0.as_ref();
+        let signature_data: &[u8] = signature.sign_value.as_ref();
         assert!(signature_data.len() >= 32usize);
         debug!("Signature value: {}", hex::encode(signature_data));
 
         // Verify absent data
-        assert!(signature.1.is_none());
-        assert!(signature.2.is_none());
+        assert!(signature.public_key.is_none());
+        assert!(signature.certificate.is_none());
     });
 }
 
@@ -126,16 +126,16 @@ fn test_sign_with_pubkey() {
         };
 
         // Validate signature data
-        let signature_data: &[u8] = signature.0.as_ref();
+        let signature_data: &[u8] = signature.sign_value.as_ref();
         assert!(signature_data.len() >= 32usize);
         debug!("Signature value: {}", hex::encode(signature_data));
 
         // Print the public key
-        assert!(signature.1.as_ref().is_some_and(|pem_data| !pem_data.is_empty()));
-        debug!("Public key: \"{}\"", signature.1.unwrap_or_default());
+        assert!(signature.public_key.as_ref().is_some_and(|pem_data| !pem_data.is_empty()));
+        debug!("Public key: \"{}\"", signature.public_key.unwrap_or_default());
 
         // Print the certificate, if any:
-        debug!("Certificate: \"{}\"", signature.2.unwrap_or_else(String::new).trim());
+        debug!("Certificate: \"{}\"", signature.certificate.unwrap_or_else(String::new).trim());
     });
 }
 
@@ -182,10 +182,10 @@ fn test_verify_signature() {
         };
 
         // Print signature data
-        debug!("Signature value: {}", hex::encode(&signature.0[..]));
+        debug!("Signature value: {}", hex::encode(&signature.sign_value[..]));
 
         // Verify the signature
-        let verify_result = match context.verify_signature(key_path, &digest, &signature.0[..]) {
+        let verify_result = match context.verify_signature(key_path, &digest, &signature.sign_value[..]) {
             Ok(value) => value,
             Err(error) => panic!("Failed to verify the signature: {:?}", error),
         };
@@ -195,7 +195,7 @@ fn test_verify_signature() {
         assert!(verify_result);
 
         // Modify signature value
-        let signature_mod = increment(&signature.0[..]);
+        let signature_mod = increment(&signature.sign_value[..]);
 
         // Verify the signature (again)
         let verify_result = match context.verify_signature(key_path, &digest, &signature_mod[..]) {
