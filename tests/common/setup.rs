@@ -75,12 +75,12 @@ impl<'a> TestConfiguration<'a> {
     fn initialize(uniq_lock: MutexGuard<'a, bool>, finalizer: Option<Finalizer>) -> Self {
         info!("Setting up the FAPI configuration, please wait...");
 
-        if let Some(path) = option_env!("FAPI_RS_TEST_DIR") {
+        if let Some(path) = option_env!("FAPI_RS_TEST_DIR").map(str::trim_ascii).filter(|str| !str.is_empty()) {
             env::set_current_dir(Path::new(path)).expect("Failed to set the working directory!");
         }
 
-        let tcti_conf = option_env!("FAPI_RS_TEST_TCTI").unwrap_or(TCTI_DEFAULT_VALUE);
-        let prof_name = option_env!("FAPI_RS_TEST_PROF").unwrap_or(PROF_DEFAULT_VALUE);
+        let tcti_conf = option_env!("FAPI_RS_TEST_TCTI").map(str::trim_ascii).filter(|str| !str.is_empty()).unwrap_or(TCTI_DEFAULT_VALUE);
+        let prof_name = option_env!("FAPI_RS_TEST_PROF").map(str::trim_ascii).filter(|str| !str.is_empty()).unwrap_or(PROF_DEFAULT_VALUE);
 
         let regex_swtpm = REGEX_SWTPM
             .get_or_init(|| RegexBuilder::new(r"^\s*swtpm\s*:\s*host\s*=\s*([^\s,]+)\s*,\s*port\s*=\s*([^\s,]+)").case_insensitive(true).build().unwrap());

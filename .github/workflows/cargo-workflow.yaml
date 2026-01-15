@@ -109,7 +109,7 @@ jobs:
           packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - run: |
           make docker.swtpm DETACH=1
-          make tests RUST_LOG=info TSS2_LOG=all+none FAPI_RS_TEST_PROF=${{ matrix.profile }}
+          make tests FAPI_RS_TEST_PROF=${{ matrix.profile }}
           make docker.down
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

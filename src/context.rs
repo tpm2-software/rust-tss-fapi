@@ -21,7 +21,7 @@ use crate::{
         self, FAPI_CONTEXT, TPM2_RC, TSS2_RC,
         constants::{self, TSS2_RC_SUCCESS},
     },
-    flags::flags_to_string,
+    flags::Flags,
     json::{self, JsonValue},
     locking::LockGuard,
     marshal::u64_from_be,
@@ -276,7 +276,7 @@ impl FapiContext {
         fail_if_opt_empty!(key_type);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
-        let cstr_type = CStringHolder::try_from(flags_to_string(key_type)?)?;
+        let cstr_type = CStringHolder::try_from(Flags::as_string(key_type)?)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
@@ -394,7 +394,7 @@ impl FapiContext {
         fail_if_opt_empty!(nvi_type);
 
         let cstr_path = CStringHolder::try_from(nv_path)?;
-        let cstr_type = CStringHolder::try_from(flags_to_string(nvi_type)?)?;
+        let cstr_type = CStringHolder::try_from(Flags::as_string(nvi_type)?)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 
@@ -541,7 +541,7 @@ impl FapiContext {
         fail_if_opt_empty!(quote_type, qualifying_data);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
-        let cstr_type = CStringHolder::try_from(flags_to_string(quote_type)?)?;
+        let cstr_type = CStringHolder::try_from(Flags::as_string(quote_type)?)?;
 
         let mut quote_info: *mut c_char = ptr::null_mut();
         let mut signature_data: *mut u8 = ptr::null_mut();
@@ -672,7 +672,7 @@ impl FapiContext {
         fail_if_empty!(digest);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
-        let cstr_algo = CStringHolder::try_from(flags_to_string(pad_algo)?)?;
+        let cstr_algo = CStringHolder::try_from(Flags::as_string(pad_algo)?)?;
 
         let mut signature_data: *mut u8 = ptr::null_mut();
         let mut signature_size: usize = 0;
@@ -739,7 +739,7 @@ impl FapiContext {
         fail_if_opt_empty!(data);
 
         let cstr_path = CStringHolder::try_from(path)?;
-        let cstr_type = CStringHolder::try_from(flags_to_string(seal_type)?)?;
+        let cstr_type = CStringHolder::try_from(Flags::as_string(seal_type)?)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
 

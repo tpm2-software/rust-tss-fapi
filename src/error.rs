@@ -9,7 +9,8 @@ use crate::fapi_sys::{TSS2_RC, constants};
 const LAYER_BIT_MASK: u32 = 0x0000FFFF;
 
 /// The error type for FAPI operations, used by the [`FapiContext`](crate::FapiContext) struct.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum ErrorCode {
     TpmError(Tpm2ErrorCode),
     FapiError(BaseErrorCode),
@@ -24,7 +25,8 @@ pub enum ErrorCode {
 }
 
 /// Generic TSS2 error codes.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum BaseErrorCode {
     GeneralFailure,
     NotImplemented,
@@ -84,7 +86,8 @@ pub enum BaseErrorCode {
 }
 
 /// TPM 2.0 response code wrapper.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum Tpm2ErrorCode {
     Tpm2ErrFmt0(Tpm2ErrFmt0),
     Tpm2ErrFmt1(Tpm2ErrFmt1),
@@ -93,7 +96,8 @@ pub enum Tpm2ErrorCode {
 }
 
 /// TPM 2.0 "format zero" response codes.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum Tpm2ErrFmt0 {
     Initialize,
     Failure,
@@ -133,7 +137,8 @@ pub enum Tpm2ErrFmt0 {
 }
 
 /// TPM 2.0 "format one" response codes.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum Tpm2ErrFmt1 {
     Asymmetric,
     Attributes,
@@ -172,7 +177,8 @@ pub enum Tpm2ErrFmt1 {
 }
 
 /// TPM 2.0 "warning" response codes.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum Tpm2Warning {
     ContextGap,
     ObjectMemory,
@@ -206,7 +212,8 @@ pub enum Tpm2Warning {
 }
 
 /// Internal error codes.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum InternalError {
     NoResultData,
     InvalidArguments,

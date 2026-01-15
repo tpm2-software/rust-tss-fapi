@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.8.1] - 2026-01-15
+
+### Added
+
+- Re-exported the `json` crate from this crate, because it is used in the public interface.
+
+### Changed
+
+- Simplified some public data types by using `#[non_exhaustive]` attribute where applicable.
+- Various improvements to the validation of "flag" parameters.
+
 ## [0.8.0] - 2026-01-15
 
 ### Added

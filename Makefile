@@ -17,8 +17,7 @@ fixup: check
 	cargo clippy --all-features --all-targets
 
 tests:
-	CARGO_PROFILE_RELEASE_DEBUG=true \
-	RUST_BACKTRACE=1 \
+	CARGO_PROFILE_RELEASE_DEBUG=true RUST_BACKTRACE=1 RUST_LOG=info TSS2_LOG="all+none" \
 	cargo test --release --tests --locked -- --test-threads=1
 
 build:
