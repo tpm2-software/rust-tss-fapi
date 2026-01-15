@@ -10,7 +10,7 @@ use std::{
     ptr, slice,
 };
 
-use crate::{ErrorCode, ImportData, fapi_sys, json::JsonValue, types::ImportDataVariant};
+use crate::{ErrorCode, fapi_sys, json::JsonValue};
 
 #[cfg(unix)]
 use libc::explicit_bzero;
@@ -147,17 +147,6 @@ impl TryFrom<Option<&JsonValue>> for CStringHolder {
     fn try_from(opt_json: Option<&JsonValue>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_json);
         Ok(Self { str_data: opt_json.map(|json| CString::new(json.to_string()).expect("Failed to allocate CString!")) })
-    }
-}
-
-impl TryFrom<ImportData<'_>> for CStringHolder {
-    type Error = ErrorCode;
-
-    fn try_from(data: ImportData) -> Result<Self, Self::Error> {
-        match data.into_inner() {
-            ImportDataVariant::Json(json_value) => CStringHolder::try_from(json_value),
-            ImportDataVariant::Pem(pem_data) => CStringHolder::try_from(pem_data),
-        }
     }
 }
 

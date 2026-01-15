@@ -4,7 +4,23 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::{ErrorCode, InternalError, json::JsonValue};
+use crate::{ErrorCode, InternalError, json::JsonValue, memory::CStringHolder};
+
+// ==========================================================================
+// Helper macros
+// ==========================================================================
+
+macro_rules! not_empty {
+    ($value:ident) => {
+        (!$value.is_empty())
+    };
+}
+
+macro_rules! opt_check {
+    ($value:ident) => {
+        $value.as_ref().is_none_or(|inner| not_empty!(inner))
+    };
+}
 
 // ==========================================================================
 // Import Data
@@ -12,7 +28,8 @@ use crate::{ErrorCode, InternalError, json::JsonValue};
 
 /// Variant that holds the actual import data
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum ImportDataVariant<'a> {
+#[non_exhaustive]
+enum ImportVariant<'a> {
     Pem(&'a str),
     Json(&'a JsonValue),
 }
@@ -21,7 +38,7 @@ pub(crate) enum ImportDataVariant<'a> {
 ///
 /// Instances of this struct may be used with the [`FapiContext::import()`](crate::FapiContext::import) function.
 #[derive(Clone, Copy, Debug)]
-pub struct ImportData<'a>(ImportDataVariant<'a>);
+pub struct ImportData<'a>(ImportVariant<'a>);
 
 impl<'a> ImportData<'a> {
     /// Attempts to create a new `ImportData` from the given `JsonValue` reference.
@@ -31,7 +48,7 @@ impl<'a> ImportData<'a> {
     /// The JSON data will be validated, by the FAPI, when it is actually used.
     pub fn from_json(json_value: &'a JsonValue) -> Result<Self, ErrorCode> {
         if json_value.is_object() && (!json_value.is_empty()) {
-            Ok(Self(ImportDataVariant::Json(json_value)))
+            Ok(Self(ImportVariant::Json(json_value)))
         } else {
             Err(ErrorCode::InternalError(InternalError::InvalidArguments))
         }
@@ -48,14 +65,21 @@ impl<'a> ImportData<'a> {
             || pem_data.starts_with("-----BEGIN RSA PRIVATE KEY-----")
             || pem_data.starts_with("-----BEGIN EC PRIVATE KEY-----")
         {
-            Ok(Self(ImportDataVariant::Pem(pem_data)))
+            Ok(Self(ImportVariant::Pem(pem_data)))
         } else {
             Err(ErrorCode::InternalError(InternalError::InvalidArguments))
         }
     }
+}
 
-    pub(crate) fn into_inner(self) -> ImportDataVariant<'a> {
-        self.0
+impl TryFrom<ImportData<'_>> for CStringHolder {
+    type Error = ErrorCode;
+
+    fn try_from(data: ImportData) -> Result<Self, Self::Error> {
+        match data.0 {
+            ImportVariant::Json(json_value) => CStringHolder::try_from(json_value),
+            ImportVariant::Pem(pem_data) => CStringHolder::try_from(pem_data),
+        }
     }
 }
 
@@ -66,6 +90,7 @@ impl<'a> ImportData<'a> {
 /// Contains the result of a signing operation.
 ///
 /// Instances of this struct are returned by the [`FapiContext::sign()`](crate::FapiContext::sign) function.
+#[non_exhaustive]
 pub struct SignResult {
     pub sign_value: Vec<u8>,
     pub public_key: Option<String>,
@@ -73,10 +98,8 @@ pub struct SignResult {
 }
 
 impl SignResult {
-    pub(crate) fn from(sign_value: Vec<u8>, public_key: Option<String>, certificate: Option<String>) -> Self {
-        assert!(!sign_value.is_empty());
-        assert!(public_key.as_ref().is_none_or(|value| !value.is_empty()));
-        assert!(certificate.as_ref().is_none_or(|value| !value.is_empty()));
+    pub fn from(sign_value: Vec<u8>, public_key: Option<String>, certificate: Option<String>) -> Self {
+        assert!(not_empty!(sign_value) && opt_check!(public_key) && opt_check!(certificate), "A required value is missing!");
         Self { sign_value, public_key, certificate }
     }
 }
@@ -88,6 +111,7 @@ impl SignResult {
 /// Contains the result of a cryptographic quoting operation.
 ///
 /// Instances of this struct are returned by the [`FapiContext::quote()`](crate::FapiContext::quote) function.
+#[non_exhaustive]
 pub struct QuoteResult {
     pub quote_info: JsonValue,
     pub signature: Vec<u8>,
@@ -96,12 +120,8 @@ pub struct QuoteResult {
 }
 
 impl QuoteResult {
-    pub(crate) fn from(quote_info: JsonValue, signature: Vec<u8>, prc_log: Option<JsonValue>, certificate: Option<String>) -> Self {
-        assert!(!quote_info.is_empty());
-        assert!(!signature.is_empty());
-        assert!(prc_log.as_ref().is_none_or(|value| !value.is_empty()));
-        assert!(prc_log.as_ref().is_none_or(|value| !value.is_empty()));
-        assert!(certificate.as_ref().is_none_or(|value| !value.is_empty()));
+    pub fn from(quote_info: JsonValue, signature: Vec<u8>, prc_log: Option<JsonValue>, certificate: Option<String>) -> Self {
+        assert!(not_empty!(quote_info) && not_empty!(signature) && opt_check!(prc_log) && opt_check!(certificate), "A required value is missing!");
         Self { quote_info, signature, prc_log, certificate }
     }
 }
@@ -113,6 +133,7 @@ impl QuoteResult {
 /// Contains the public and/or private BLOBs of a TPM object.
 ///
 /// Instances of this struct are returned by the [`FapiContext::get_tpm_blobs()`](crate::FapiContext::get_tpm_blobs) function.
+#[non_exhaustive]
 pub struct TpmBlobs {
     pub public_key: Option<Vec<u8>>,
     pub private_key: Option<Vec<u8>>,
@@ -120,10 +141,8 @@ pub struct TpmBlobs {
 }
 
 impl TpmBlobs {
-    pub(crate) fn from(public_key: Option<Vec<u8>>, private_key: Option<Vec<u8>>, policy: Option<JsonValue>) -> Self {
-        assert!(public_key.as_ref().is_none_or(|value| !value.is_empty()));
-        assert!(private_key.as_ref().is_none_or(|value| !value.is_empty()));
-        assert!(policy.as_ref().is_none_or(|value| !value.is_empty()));
+    pub fn from(public_key: Option<Vec<u8>>, private_key: Option<Vec<u8>>, policy: Option<JsonValue>) -> Self {
+        assert!(opt_check!(public_key) && opt_check!(private_key) && opt_check!(policy), "A required value is missing!");
         Self { public_key, private_key, policy }
     }
 }
