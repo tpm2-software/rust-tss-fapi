@@ -29,7 +29,7 @@ fn main() {
 
     // Print library version
     let version_info = tss2_fapi_rs::get_version();
-    info!("Using tss2-fapi-rs package version: {}, built with native FAPI library version: {}", version_info.0, version_info.1);
+    info!("Using tss2-fapi-rs package version: {}, built with native FAPI library version: {}", version_info.package, version_info.native);
 
     // Create a new FAPI context
     info!("Creating FAPI context, please wait...");

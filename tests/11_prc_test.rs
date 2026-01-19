@@ -7,9 +7,11 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     param::PASSWORD,
     random::{create_seed, generate_bytes},
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::debug;
@@ -21,9 +23,6 @@ use tss2_fapi_rs::{FapiContext, KeyFlags};
 const KEY_FLAGS_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Restricted, KeyFlags::Sign];
 const PCR_NO: [u32; 8usize] = [8, 9, 10, 11, 12, 13, 14, 15];
 
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
-
 // ==========================================================================
 // Test cases
 // ==========================================================================
@@ -33,7 +32,7 @@ mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 #[serial]
 #[named]
 fn test_pcr_extend() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         // Initialize RNG
@@ -46,7 +45,8 @@ fn test_pcr_extend() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Extend PCR with data
         match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], None) {
@@ -61,7 +61,7 @@ fn test_pcr_extend() {
 #[serial]
 #[named]
 fn test_pcr_read() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         // Initialize RNG
@@ -74,7 +74,8 @@ fn test_pcr_read() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Read current PCR value
         let pcr_value_0 = match context.pcr_read(PCR_NO[i % PCR_NO.len()], false) {
@@ -135,7 +136,7 @@ fn test_pcr_read() {
 #[serial]
 #[named]
 fn test_pcr_read_with_quote() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         // Initialize RNG
@@ -148,7 +149,8 @@ fn test_pcr_read_with_quote() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Extend PCR with data
         match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], Some("{ \"test\": \"1st value\" }")) {
@@ -175,7 +177,7 @@ fn test_pcr_read_with_quote() {
 #[serial]
 #[named]
 fn test_pcr_quote() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestAK{}", i);
@@ -190,7 +192,8 @@ fn test_pcr_quote() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create attestation key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
@@ -233,7 +236,7 @@ fn test_pcr_quote() {
 #[serial]
 #[named]
 fn test_pcr_quote_with_log() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestAK{}", i);
@@ -248,7 +251,8 @@ fn test_pcr_quote_with_log() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create attestation key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
@@ -293,7 +297,7 @@ fn test_pcr_quote_with_log() {
 #[serial]
 #[named]
 fn test_pcr_verify_quote() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestAK{}", i);
@@ -308,7 +312,8 @@ fn test_pcr_verify_quote() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create attestation key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {

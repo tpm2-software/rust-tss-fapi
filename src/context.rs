@@ -4,28 +4,18 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use core::slice;
-use std::{
-    ffi::{CStr, c_char},
-    fmt::Display,
-    num::NonZeroUsize,
-    os::raw::c_void,
-    ptr,
-    sync::RwLock,
-};
+use std::{ffi::c_char, fmt::Display, num::NonZeroUsize, os::raw::c_void, ptr, sync::RwLock};
 
 use crate::{
-    BaseErrorCode, BlobType, ErrorCode, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealFlags, SignResult, TpmBlobs,
-    callback::{ActnCallback, AuthCallback, BranCallback, SignCallback},
-    fapi_sys::{
-        self, FAPI_CONTEXT, TPM2_RC, TSS2_RC,
-        constants::{self, TSS2_RC_SUCCESS},
-    },
+    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealFlags,
+    SignResult, TpmBlobs,
+    callback::{Callbacks, entry_point},
+    fapi_sys::{self, FAPI_CONTEXT, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
     flags::Flags,
     json::{self, JsonValue},
     locking::LockGuard,
     marshal::u64_from_be,
-    memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr, ptr_to_cstr_vec, ptr_to_opt_cstr},
+    memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr},
 };
 
 /* Const */
@@ -90,10 +80,7 @@ type TctiOpaqueContextBlob = *mut [u8; 0];
 #[derive(Debug)]
 pub struct FapiContext {
     native_holder: NativeContextHolder,
-    callback_auth: Option<Box<AuthCallback>>,
-    callback_sign: Option<Box<SignCallback>>,
-    callback_bran: Option<Box<BranCallback>>,
-    callback_actn: Option<Box<ActnCallback>>,
+    callbacks: Option<Callbacks>,
 }
 
 /// A struct that wraps the native C pointer to the underlying FAPI_CONTEXT instance
@@ -108,13 +95,6 @@ static FAPI_CALL_RWLOCK: RwLock<()> = RwLock::new(());
 // ==========================================================================
 // Helper functions
 // ==========================================================================
-
-/// Create FAPI error code from base error code
-macro_rules! mk_fapi_rc {
-    ($error:ident) => {
-        constants::TSS2_FEATURE_RC_LAYER | constants::$error
-    };
-}
 
 /// Assert that the given slice or slices are not empty
 macro_rules! fail_if_empty {
@@ -160,69 +140,45 @@ impl FapiContext {
     /// *See also:* [`Fapi_Initialize()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___initialize.html)
     pub fn new() -> Result<Self, ErrorCode> {
         let mut native_context: *mut FAPI_CONTEXT = ptr::null_mut();
-        create_result_from_retval(unsafe { fapi_sys::Fapi_Initialize(&mut native_context, ptr::null()) }).map(|_| Self {
-            native_holder: NativeContextHolder::new(native_context),
-            callback_auth: None,
-            callback_sign: None,
-            callback_bran: None,
-            callback_actn: None,
-        })
+        create_result_from_retval(unsafe { fapi_sys::Fapi_Initialize(&mut native_context, ptr::null()) })
+            .map(|_| Self { native_holder: NativeContextHolder::new(native_context), callbacks: None })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // Callback setters
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    /// This function registers an application-defined function as a callback to allow the FAPI to request authorization values from the application. The callback is implemented via the [`AuthCallback`](crate::AuthCallback) struct.
+    /// This function registers application-defined callback functions with the FAPI context.
     ///
-    /// *See also:* [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
-    pub fn set_auth_callback(&mut self, auth_callback: AuthCallback) -> Result<(), ErrorCode> {
-        let mut callback_box = Box::new(auth_callback);
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetAuthCB(context, Some(auth_callback_entrypoint), callback_box.as_mut() as *mut AuthCallback as *mut c_void)
-        })
-        .map(|_| {
-            self.callback_auth = Some(callback_box); /*store AuthCallback in FapiContext to keep it alive!*/
-        })
+    /// The callback functions are implemented via the [`FapiCallbacks`](crate::FapiCallbacks) trait.
+    ///
+    /// *See also:*
+    /// - [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
+    /// - [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
+    /// - [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
+    /// - [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
+    pub fn set_callbacks(&mut self, callbacks: impl FapiCallbacks + 'static) -> Result<(), ErrorCode> {
+        let _previous = self.callbacks.replace(Callbacks::new(callbacks));
+        let callbacks_ptr = self.callbacks.as_mut().unwrap() as *mut Callbacks as *mut c_void;
+        let results = [
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAuthCB(context, Some(entry_point::auth_cb), callbacks_ptr) }),
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetSignCB(context, Some(entry_point::sign_cb), callbacks_ptr) }),
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetBranchCB(context, Some(entry_point::branch_cb), callbacks_ptr) }),
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetPolicyActionCB(context, Some(entry_point::policy_action_cb), callbacks_ptr) }),
+        ];
+        results.iter().try_fold((), |_acc, &result| result)
     }
 
-    /// This function registers an application-defined function as a callback to allow the FAPI to request signatures for authorizing the use of TPM objects from the application. The callback is implemented via the [`SignCallback`](crate::SignCallback) struct.
-    ///
-    /// *See also:* [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    pub fn set_sign_callback(&mut self, sign_callback: SignCallback) -> Result<(), ErrorCode> {
-        let mut callback_box = Box::new(sign_callback);
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetSignCB(context, Some(sign_callback_entrypoint), callback_box.as_mut() as *mut SignCallback as *mut c_void)
-        })
-        .map(|_| {
-            self.callback_sign = Some(callback_box); /*store SignCallback in FapiContext to keep it alive!*/
-        })
-    }
-
-    /// This function registers an application-defined function as a callback to allow the FAPI to request branch choices from the application during policy evaluation. The callback is implemented via the [`BranCallback`](crate::BranCallback) struct.
-    ///
-    /// *See also:* [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    pub fn set_branch_callback(&mut self, bran_callback: BranCallback) -> Result<(), ErrorCode> {
-        let mut callback_box = Box::new(bran_callback);
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetBranchCB(context, Some(branch_callback_entrypoint), callback_box.as_mut() as *mut BranCallback as *mut c_void)
-        })
-        .map(|_| {
-            self.callback_bran = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
-        })
-    }
-
-    /// This function registers an application-defined function as a callback to allow the FAPI to notify the application about policy actions. The callback is implemented via the [`ActnCallback`](crate::ActnCallback) struct.
-    ///
-    /// *See also:* [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    pub fn set_policy_action_callback(&mut self, actn_callback: ActnCallback) -> Result<(), ErrorCode> {
-        let mut callback_box = Box::new(actn_callback);
-        self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_SetPolicyActionCB(context, Some(action_callback_entrypoint), callback_box.as_mut() as *mut ActnCallback as *mut c_void)
-        })
-        .map(|_| {
-            self.callback_actn = Some(callback_box); /*store BranCallback in FapiContext to keep it alive!*/
-        })
+    /// This function un-registers any application-defined callback functions that have been registers via the [`set_callbacks()`](FapiContext::set_callbacks) function.
+    pub fn clear_callbacks(&mut self) -> Result<(), ErrorCode> {
+        let _previous = self.callbacks.take();
+        let results = [
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAuthCB(context, None, ptr::null_mut()) }),
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetSignCB(context, None, ptr::null_mut()) }),
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetBranchCB(context, None, ptr::null_mut()) }),
+            self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetPolicyActionCB(context, None, ptr::null_mut()) }),
+        ];
+        results.iter().try_fold((), |_acc, &result| result)
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -959,18 +915,12 @@ impl FapiContext {
             let _guard = LockGuard::acquire(&FAPI_CALL_RWLOCK, exclusive);
             caller(self.native_holder.get())
         };
-        self.clear_callbacks();
-        create_result_from_retval(error_code)
-    }
 
-    /// Clear temporary buffers of the callback, e.g. after FAPI invocation
-    fn clear_callbacks(&mut self) {
-        if let Some(cb) = &mut self.callback_auth {
-            cb.clear_buffer()
+        if let Some(callbacks) = &mut self.callbacks {
+            callbacks.clear();
         }
-        if let Some(cb) = &mut self.callback_sign {
-            cb.clear_buffer()
-        }
+
+        create_result_from_retval(error_code)
     }
 }
 
@@ -1010,111 +960,3 @@ impl Drop for NativeContextHolder {
 
 /// This allows `*mut FAPI_CONTEXT` to be moved between threads, but wrapping the `FapiContext` in an `Arc<Mutex<_>>` is still required!
 unsafe impl Send for NativeContextHolder {}
-
-// ==========================================================================
-// Callback functions
-// ==========================================================================
-
-/// Invokes the actual AuthCallback struct
-unsafe extern "C" fn auth_callback_entrypoint(
-    object_path: *const c_char,
-    description: *const c_char,
-    auth: *mut *const c_char,
-    user_data: *mut c_void,
-) -> TSS2_RC {
-    if object_path.is_null() || auth.is_null() || user_data.is_null() {
-        return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
-    }
-    unsafe {
-        match (*(user_data as *mut AuthCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
-            Some(auth_value) => {
-                *auth = auth_value.as_ptr();
-                TSS2_RC_SUCCESS
-            }
-            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-        }
-    }
-}
-
-/// Invokes the actual SignCallback struct
-unsafe extern "C" fn sign_callback_entrypoint(
-    object_path: *const c_char,
-    description: *const c_char,
-    public_key: *const c_char,
-    key_hint: *const c_char,
-    hash_alg: u32,
-    challenge_data: *const u8,
-    challenge_size: usize,
-    signature_data: *mut *const u8,
-    signature_size: *mut usize,
-    user_data: *mut c_void,
-) -> TSS2_RC {
-    if object_path.is_null()
-        || public_key.is_null()
-        || hash_alg == 0u32
-        || challenge_data.is_null()
-        || challenge_size == 0usize
-        || signature_data.is_null()
-        || signature_size.is_null()
-        || user_data.is_null()
-    {
-        return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
-    }
-    unsafe {
-        match (*(user_data as *mut SignCallback)).invoke(
-            CStr::from_ptr(object_path),
-            ptr_to_opt_cstr(description),
-            CStr::from_ptr(public_key),
-            ptr_to_opt_cstr(key_hint),
-            hash_alg,
-            slice::from_raw_parts(challenge_data, challenge_size),
-        ) {
-            Some(sign_value) => {
-                *signature_data = sign_value.as_ptr();
-                *signature_size = sign_value.len();
-                TSS2_RC_SUCCESS
-            }
-            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-        }
-    }
-}
-
-/// Invokes the actual BranCallback struct
-unsafe extern "C" fn branch_callback_entrypoint(
-    object_path: *const c_char,
-    description: *const c_char,
-    branch_names: *mut *const c_char,
-    num_branches: usize,
-    selected: *mut usize,
-    user_data: *mut c_void,
-) -> TSS2_RC {
-    if object_path.is_null() || branch_names.is_null() || num_branches == 0usize || selected.is_null() || user_data.is_null() {
-        return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
-    }
-    unsafe {
-        match (*(user_data as *mut BranCallback)).invoke(
-            CStr::from_ptr(object_path),
-            ptr_to_opt_cstr(description),
-            &ptr_to_cstr_vec(branch_names, num_branches)[..],
-        ) {
-            Some(bran_value) => {
-                *selected = bran_value;
-                TSS2_RC_SUCCESS
-            }
-            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-        }
-    }
-}
-
-/// Invokes the actual ActnCallback struct
-unsafe extern "C" fn action_callback_entrypoint(object_path: *const c_char, action: *const c_char, user_data: *mut c_void) -> TSS2_RC {
-    if object_path.is_null() || user_data.is_null() {
-        return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
-    }
-    unsafe {
-        match (*(user_data as *mut ActnCallback)).invoke(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
-            true => TSS2_RC_SUCCESS,
-            _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-        }
-    }
-}

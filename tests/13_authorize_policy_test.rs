@@ -7,9 +7,11 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     param::PASSWORD,
     random::{create_seed, generate_bytes},
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::{debug, trace};
@@ -17,17 +19,10 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
-use std::sync::{
-    Arc,
-    atomic::{AtomicI64, Ordering},
-};
 use tss2_fapi_rs::{
-    ActnCallback, ActnCallbackParam, FapiContext, ImportData, KeyFlags,
+    FapiContext, ImportData, KeyFlags,
     json::{Error as JsonError, JsonValue, number::Number},
 };
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 
@@ -40,7 +35,7 @@ const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 #[serial]
 #[named]
 fn test_policy_authorize_pubkey() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = [&format!("/HS/SRK/myPolicySignKey{}", i), &format!("HS/SRK/myTestKey{}", i)];
@@ -56,14 +51,8 @@ fn test_policy_authorize_pubkey() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
-
-        // Set up "action" callback
-        let action_triggered = Arc::new(AtomicI64::new(0i64));
-        match context.set_policy_action_callback(ActnCallback::with_data(my_actn_callback, action_triggered.clone())) {
-            Ok(_) => debug!("Action callback installed."),
-            Err(error) => panic!("Failed to set up sign callback: {:?}", error),
-        }
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Step #1: Create the policy siging key [backend]
@@ -178,7 +167,7 @@ fn test_policy_authorize_pubkey() {
 #[serial]
 #[named]
 fn test_policy_authorize_path() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = [&format!("/HS/SRK/myPolicySignKey{}", i), &format!("HS/SRK/myTestKey{}", i)];
@@ -194,14 +183,8 @@ fn test_policy_authorize_path() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
-
-        // Set up "action" callback
-        let action_triggered = Arc::new(AtomicI64::new(0i64));
-        match context.set_policy_action_callback(ActnCallback::with_data(my_actn_callback, action_triggered.clone())) {
-            Ok(_) => debug!("Action callback installed."),
-            Err(error) => panic!("Failed to set up sign callback: {:?}", error),
-        }
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Step #1: Create the policy siging key [backend]
@@ -338,11 +321,4 @@ fn create_name_hash_policy(key_path: &str) -> Result<JsonValue, JsonError> {
     let mut policy_json = json::parse(POLICY_NAME_HASH_TEMPLATE)?;
     policy_json["policy"][0usize]["namePaths"].push(JsonValue::String(key_path.to_owned()))?;
     Ok(policy_json)
-}
-
-/// The "action" callback implementation to be used for testing
-fn my_actn_callback(param: ActnCallbackParam, triggered: &Arc<AtomicI64>) -> bool {
-    debug!("(ACTN_CB) Action for {:?} has been requested!", param.object_path);
-    trace!("(ACTN_CB) Parameters: {:?}", param);
-    triggered.fetch_add(1i64, Ordering::SeqCst) >= 0i64
 }

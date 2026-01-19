@@ -7,18 +7,17 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     crypto::{get_key_type, load_public_key},
     param::PASSWORD,
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::debug;
 use serial_test::serial;
 use std::collections::HashSet;
 use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, ImportData, KeyFlags};
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const KEY_FLAGS: &[KeyFlags] = &[KeyFlags::NoDA];
 
@@ -31,7 +30,7 @@ const KEY_FLAGS: &[KeyFlags] = &[KeyFlags::NoDA];
 #[serial]
 #[named]
 fn test_create_key() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -43,7 +42,8 @@ fn test_create_key() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -58,7 +58,7 @@ fn test_create_key() {
 #[serial]
 #[named]
 fn test_list_keys() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_paths = [&format!("HS/SRK/myTestKey{}a", i), &format!("HS/SRK/myTestKey{}b", i)];
@@ -70,7 +70,8 @@ fn test_list_keys() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         for key_path in key_paths {
@@ -103,7 +104,7 @@ fn test_list_keys() {
 #[serial]
 #[named]
 fn test_export_key() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -115,7 +116,8 @@ fn test_export_key() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -146,7 +148,7 @@ fn test_export_key() {
 #[serial]
 #[named]
 fn test_import_key() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     const PUBLIC_KEY_DATA: &str = "-----BEGIN PUBLIC KEY-----\n\
                                    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiKgY4DR7lSHMIwbAYx1XjjLMGpnS\n\
@@ -162,7 +164,8 @@ fn test_import_key() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Import the existing public key
         match context.import(key_path, ImportData::from_pem(PUBLIC_KEY_DATA).unwrap()) {
@@ -184,7 +187,7 @@ fn test_import_key() {
 #[serial]
 #[named]
 fn test_delete() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -196,7 +199,8 @@ fn test_delete() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -224,7 +228,7 @@ fn test_delete() {
 #[serial]
 #[named]
 fn test_get_tpm_blobs() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -236,7 +240,8 @@ fn test_get_tpm_blobs() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -266,7 +271,7 @@ fn test_get_tpm_blobs() {
 #[serial]
 #[named]
 fn test_get_tpm_blobs_with_private() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -278,7 +283,8 @@ fn test_get_tpm_blobs_with_private() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -313,7 +319,7 @@ fn test_get_tpm_blobs_with_private() {
 #[serial]
 #[named]
 fn test_get_esys_blob() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -325,7 +331,8 @@ fn test_get_esys_blob() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {

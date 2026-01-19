@@ -4,8 +4,10 @@
  * All rights reserved.
  **********************************************************************************************/
 
+use super::callback::MyCallbacks;
 use log::info;
 use std::sync::OnceLock;
+use tss2_fapi_rs::FapiContext;
 
 /* Defaults */
 const LOOPS_DEFAULT_VALUE: usize = 3;
@@ -46,8 +48,8 @@ macro_rules! skip_test_ifeq {
 /// This function ignores a possible "AlreadyProvisioned" error, because that kind of error is expected for all but the very first test!
 #[macro_export]
 macro_rules! tpm_initialize {
-    ($context:ident, $password:ident, $auth_cb:ident) => {
-        if let Err(error) = $context.set_auth_callback(tss2_fapi_rs::AuthCallback::new($auth_cb)) {
+    ($context:ident, $password:ident, $callbacks:ident) => {
+        if let Err(error) = $context.set_callbacks($callbacks) {
             panic!("Setting up the callback has failed: {:?}", error)
         }
 
@@ -59,37 +61,11 @@ macro_rules! tpm_initialize {
     };
 }
 
-/// The "auth" callback implementation used for testing.
-#[macro_export]
-macro_rules! mk_auth_callback {
-    ($fn_name:ident, $password:expr) => {
-        fn $fn_name(param: tss2_fapi_rs::AuthCallbackParam) -> Option<std::borrow::Cow<'static, str>> {
-            log::debug!("(AUTH_CB) Auth value for path {:?} has been requested!", param.object_path);
-            log::trace!("(AUTH_CB) Parameters: {:?}", param);
-
-            let object_path = param.object_path.find('/').map(|pos| &param.object_path[pos + 1usize..]).unwrap_or(param.object_path);
-            if !object_path.eq("HS") && !object_path.starts_with("HS/SRK/my") {
-                log::warn!("(AUTH_CB) The requested object path {:?} is not recognized!", object_path);
-                return None;
-            }
-
-            Some(std::borrow::Cow::Borrowed($password))
-        }
-    };
-}
-
-/// Perform final clean-up of all objects created during test run(s).
-#[macro_export]
-macro_rules! mk_tpm_finalizer {
-    ($fn_name:ident, $auth_cb:ident) => {
-        fn $fn_name() {
-            log::debug!("Cleaning up the TPM now!");
-            if FapiContext::new()
-                .and_then(|mut fpai_ctx| fpai_ctx.set_auth_callback(tss2_fapi_rs::AuthCallback::new($auth_cb)).and_then(|_| fpai_ctx.delete("/")))
-                .is_err()
-            {
-                log::warn!("Failed to clean-up test objects, take care!");
-            }
-        }
-    };
+/// TPM finalizer
+pub fn my_tpm_finalizer(password: &'static str) {
+    log::debug!("Cleaning up the TPM now!");
+    let (callbacks, _logger) = MyCallbacks::new(password, None);
+    if FapiContext::new().and_then(|mut fpai_ctx| fpai_ctx.set_callbacks(callbacks).and_then(|_| fpai_ctx.delete("/"))).is_err() {
+        log::warn!("Failed to clean-up test objects, take care!");
+    }
 }

@@ -4,6 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
+pub mod callback;
 pub mod crypto;
 pub mod param;
 pub mod random;

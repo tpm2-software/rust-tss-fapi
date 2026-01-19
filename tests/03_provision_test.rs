@@ -6,16 +6,13 @@
 
 pub mod common;
 
-use common::{param::PASSWORD, setup::TestConfiguration};
+use common::{callback::MyCallbacks, param::PASSWORD, setup::TestConfiguration, utils::my_tpm_finalizer};
 use function_name::named;
 use log::{Level, debug, info};
 use memory_stats::memory_stats;
 use serial_test::serial;
 use std::time::Instant;
 use tss2_fapi_rs::FapiContext;
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 // ==========================================================================
 // Test cases
@@ -26,7 +23,7 @@ mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 #[serial]
 #[named]
 fn test_provision() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|_i| {
         // Create FAPI context
@@ -36,7 +33,8 @@ fn test_provision() {
         };
 
         // Set up auth callback
-        if let Err(error) = context.set_auth_callback(tss2_fapi_rs::AuthCallback::new(my_auth_callback)) {
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        if let Err(error) = context.set_callbacks(callbacks) {
             panic!("Setting up the callback has failed: {:?}", error)
         }
 
@@ -74,7 +72,8 @@ fn test_to_destruction() {
                 Ok(fpai_ctx) => fpai_ctx,
                 Err(error) => panic!("Failed to create context: {:?}", error),
             };
-            tpm_initialize!(context, PASSWORD, my_auth_callback);
+            let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+            tpm_initialize!(context, PASSWORD, callbacks);
         }
 
         // Completed

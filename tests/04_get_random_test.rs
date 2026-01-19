@@ -13,8 +13,7 @@ use serial_test::serial;
 use std::num::NonZeroUsize;
 use tss2_fapi_rs::FapiContext;
 
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
+use crate::common::{callback::MyCallbacks, utils::my_tpm_finalizer};
 
 // ==========================================================================
 // Test cases
@@ -25,7 +24,7 @@ mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 #[serial]
 #[named]
 fn test_get_random() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|_i| {
         // Create FAPI context
@@ -35,7 +34,8 @@ fn test_get_random() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Fetch random data
         let random_data = match context.get_random(NonZeroUsize::new(128usize).unwrap()) {

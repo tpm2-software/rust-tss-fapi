@@ -7,9 +7,11 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     param::PASSWORD,
     random::{create_seed, generate_bytes},
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::{debug, warn};
@@ -17,9 +19,6 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use tss2_fapi_rs::{FapiContext, KeyFlags};
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const KEY_FLAGS_ENCR: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Decrypt];
 
@@ -32,7 +31,7 @@ const KEY_FLAGS_ENCR: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Decrypt];
 #[serial]
 #[named]
 fn test_encrypt() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
     skip_test_ifeq!(configuration, "ECC");
 
     repeat_test!(|i| {
@@ -48,7 +47,8 @@ fn test_encrypt() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_ENCR), None, Some(PASSWORD)) {
@@ -76,7 +76,7 @@ fn test_encrypt() {
 #[serial]
 #[named]
 fn test_decrypt() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
     skip_test_ifeq!(configuration, "ECC");
 
     repeat_test!(|i| {
@@ -92,7 +92,8 @@ fn test_decrypt() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_ENCR), None, Some(PASSWORD)) {

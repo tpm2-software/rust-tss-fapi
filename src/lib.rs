@@ -25,15 +25,11 @@
 //! The following example illustrates how to use the TSS 2.0 FAPI in Rust:
 //!
 //! ```rust no_run
-//! use env_logger::Builder as EnvLogger;
-//! use log::{error, info, warn, LevelFilter};
+//! use log::{error, info, warn};
 //! use std::num::NonZeroUsize;
 //! use tss2_fapi_rs::FapiContext;
 //!
 //! fn main() {
-//!     // Initialize the logger
-//!     EnvLogger::new().filter_level(LevelFilter::Info).init();
-//!
 //!     // Create a new FAPI context
 //!     info!("Creating FAPI context, please wait...");
 //!     let mut context = match FapiContext::new() {
@@ -68,25 +64,33 @@
 //! Various use-cases of the FAPI require implementing and installing ***callback functions***, for example:
 //!
 //! ```rust no_run
-//! use std::borrow::Cow;
 //! use log::info;
-//! use tss2_fapi_rs::{FapiContext, AuthCallback, AuthCallbackParam};
+//! use std::borrow::Cow;
+//! use tss2_fapi_rs::{AuthCbParam, FapiCallbacks, FapiContext};
 //!
 //! fn main() {
 //!     // Create a new FAPI context
 //!     let mut context = FapiContext::new().expect("Failed to create context!");
 //!
-//!     // Set up "auth" callback function
-//!     match context.set_auth_callback(AuthCallback::new(my_auth_func)) {
-//!         Ok(_) => info!("Callback installed."),
-//!         Err(error) => panic!("Failed to install callback: {:?}", error)
+//!     // Add callback functions
+//!     match context.set_callbacks(MyCallbacks { password: "my_password" }) {
+//!         Ok(_) => info!("Success."),
+//!         Err(error) => panic!("Failed to set up AUTH callback function: {:?}", error),
 //!     }
 //! }
 //!
-//! // Application-defined callback function
-//! fn my_auth_func(param: AuthCallbackParam) -> Option<Cow<'static, str>> {
-//!     info!("Auth value for {:?} requested!", param.object_path);
-//!     Some(Cow::from("my password"))
+//! /// Application-defined callback functions
+//! #[derive(Debug)]
+//! struct MyCallbacks {
+//!     password: &'static str,
+//! }
+//!
+//! impl FapiCallbacks for MyCallbacks {
+//!     /// Function that will be called by the FAPI to request authorization values
+//!     fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+//!         info!("Authorization for object at {:?} requested.", param.object_path);
+//!         Some(Cow::from(self.password))
+//!     }
 //! }
 //! ```
 //!
@@ -96,7 +100,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.6.2"
+//! tss2-fapi-rs = "0.9.0"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
@@ -447,7 +451,7 @@ mod types;
 mod version;
 
 pub use algorithm_id::HashAlgorithm;
-pub use callback::{ActnCallback, ActnCallbackParam, AuthCallback, AuthCallbackParam, BranCallback, BranCallbackParam, SignCallback, SignCallbackParam};
+pub use callback::{AuthCbParam, BranchCbParam, FapiCallbacks, PolicyActionCbParam, SignCbParam};
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};

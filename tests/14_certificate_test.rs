@@ -7,10 +7,12 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     crypto::{KeyType, get_key_type},
     param::PASSWORD,
     setup::TestConfiguration,
     tempfile::TempFile,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::{debug, warn};
@@ -20,9 +22,6 @@ use std::{
     process::{Command, Stdio},
 };
 use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, KeyFlags, json::JsonValue};
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const KEY_FLAGS: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Decrypt];
 
@@ -35,7 +34,7 @@ const KEY_FLAGS: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Decrypt];
 #[serial]
 #[named]
 fn test_set_certificate() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -47,7 +46,8 @@ fn test_set_certificate() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create the key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -78,7 +78,7 @@ fn test_set_certificate() {
 #[serial]
 #[named]
 fn test_get_certificate() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -90,7 +90,8 @@ fn test_get_certificate() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create the key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -131,7 +132,7 @@ fn test_get_certificate() {
 #[serial]
 #[named]
 fn test_remove_certificate() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myTestKey{}", i);
@@ -143,7 +144,8 @@ fn test_remove_certificate() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create the key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -199,7 +201,7 @@ fn test_remove_certificate() {
 #[serial]
 #[named]
 fn test_get_platform_certificates() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|_i| {
         // Create FAPI context
@@ -209,7 +211,8 @@ fn test_get_platform_certificates() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Get the certificate
         let platform_certs = match context.get_platform_certificates() {

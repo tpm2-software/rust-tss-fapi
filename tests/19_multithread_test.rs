@@ -7,10 +7,12 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     crypto::{KeyType, get_key_type},
     param::PASSWORD,
     random::create_seed,
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::{debug, trace};
@@ -23,9 +25,6 @@ use std::{
     thread,
 };
 use tss2_fapi_rs::{FapiContext, KeyFlags, PaddingFlags};
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 const PADDING_RSAPSS: &[PaddingFlags] = &[PaddingFlags::RsaPss];
@@ -41,7 +40,7 @@ const THREAD_COUNT: usize = 4usize;
 #[serial]
 #[named]
 fn test_multiple_threads() {
-    let configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/mySigKey{}", i);
@@ -56,7 +55,8 @@ fn test_multiple_threads() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {

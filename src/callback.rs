@@ -4,101 +4,26 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::{HashAlgorithm, fapi_sys::TPM2_ALG_ID, memory::CStringHolder};
+use super::{HashAlgorithm, fapi_sys::TPM2_ALG_ID, memory::CStringHolder};
 use log::trace;
-use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug};
+use std::{borrow::Cow, ffi::CStr, fmt::Debug};
 
 // ==========================================================================
-// AuthCallback
+// Callback parameters
 // ==========================================================================
 
-/// A callback function that allows the FAPI to request authorization values.
-///
-/// Regsitered to a FAPI context via the [`set_auth_callback()`](crate::FapiContext::set_auth_callback) function.
-pub struct AuthCallback {
-    auth_fn: Box<AuthCallbackFunction>,
-    auth_value: Option<CStringHolder>,
-}
-
-/// Signature of the wrapped [`AuthCallback`] function
-type AuthCallbackFunction = dyn Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + Send;
-
-/// Wraps the parameters to be passed to the [`AuthCallback`] callback.
+/// The parameters that are provided to the [`FapiCallbacks::auth_cb`] callback.
 #[derive(Debug)]
-pub struct AuthCallbackParam<'a> {
+pub struct AuthCbParam<'a> {
     /// Identifies the TPM object (path) for which an authorization value is requested.
     pub object_path: &'a str,
     /// User readable description of the authorization value requested (optional).
     pub description: Option<&'a str>,
 }
 
-impl AuthCallback {
-    /// Creates a new callback instance.
-    ///
-    /// The supplied `auth_fn` will be called whenever the FAPI requests authorization values from the application. This function receives an [`AuthCallbackParam`] as parameter; it shall return `Some(value)`, if an authorization value for the requested object is provided by the application, or `None`, if **no** authorization value is provided.
-    pub fn new(auth_fn: impl Fn(AuthCallbackParam) -> Option<Cow<'static, str>> + 'static + Send) -> Self {
-        Self { auth_fn: Box::new(auth_fn), auth_value: None }
-    }
-
-    /// Creates a new callback instance with additional data.
-    ///
-    /// The supplied `auth_fn` will be called whenever the FAPI requests authorization values from the application. This function receives an [`AuthCallbackParam`] as parameter; it shall return `Some(value)`, if an authorization value for the requested object is provided by the application, or `None`, if **no** authorization value is provided.
-    ///
-    /// The application-defined `extra_data` argument will be passed to each invocation of `auth_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(sign_fn: impl Fn(AuthCallbackParam, &T) -> Option<Cow<'static, str>> + 'static + Send, extra_data: T) -> Self {
-        Self::new(move |callback_param| sign_fn(callback_param, &extra_data))
-    }
-
-    /// Request authorization value for the specified TPM object (path) from the application.
-    pub(crate) fn invoke(&mut self, object_path: &CStr, description: Option<&CStr>) -> Option<&CStringHolder> {
-        let param = AuthCallbackParam::new(object_path, description);
-        trace!("AuthCallback::invoke({:?})", &param);
-        match (self.auth_fn)(param) {
-            Some(value) => {
-                self.auth_value = CStringHolder::try_from(value).ok();
-                self.auth_value.as_ref()
-            }
-            _ => None,
-        }
-    }
-
-    pub(crate) fn clear_buffer(&mut self) {
-        self.auth_value.take();
-    }
-}
-
-impl<'a> AuthCallbackParam<'a> {
-    fn new(object_path: &'a CStr, description: Option<&'a CStr>) -> Self {
-        Self { object_path: object_path.to_str().unwrap_or_default(), description: description.map(|str| str.to_str().unwrap_or_default()) }
-    }
-}
-
-impl Debug for AuthCallback {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AuthCallback").field("auth_fn", &(*self.auth_fn).type_id()).field("auth_value", &self.auth_value).finish()
-    }
-}
-
-// ==========================================================================
-// SignCallback
-// ==========================================================================
-
-/// A callback function that allows the FAPI to request signatures.
-///
-/// Signatures are requested for authorizing TPM objects.
-///
-/// Registered to a FAPI context via the [`set_sign_callback()`](crate::FapiContext::set_sign_callback) function.
-pub struct SignCallback {
-    sign_fn: Box<SignCallbackFunction>,
-    sign_data: Option<Vec<u8>>,
-}
-
-/// Signature of the wrapped [`SignCallback`] function
-type SignCallbackFunction = dyn Fn(SignCallbackParam) -> Option<Vec<u8>> + Send;
-
-/// Wraps the parameters to be passed to the [`SignCallback`] callback.
+/// The parameters that are provided to the [`FapiCallbacks::sign_cb`] callback.
 #[derive(Debug)]
-pub struct SignCallbackParam<'a> {
+pub struct SignCbParam<'a> {
     /// Identifies the policy (path) being executed for which a signature is requested.
     pub object_path: &'a str,
     /// Description as provided in the policy definition (optional).
@@ -113,50 +38,33 @@ pub struct SignCallbackParam<'a> {
     pub challenge: &'a [u8],
 }
 
-impl SignCallback {
-    /// Creates a new callback instance.
-    ///
-    /// The supplied `sign_fn` will be called whenever the FAPI requests a signature from the application. The purpose of this signature is to authorize a policy execution containing a *PolicySigned* element. This function receives a [`SignCallbackParam`] as parameter; it shall return `Some(value)`, if a signature value is provided by the application, or `None`, if **no** signature value is provided.
-    pub fn new(sign_fn: impl Fn(SignCallbackParam) -> Option<Vec<u8>> + 'static + Send) -> Self {
-        Self { sign_fn: Box::new(sign_fn), sign_data: None }
-    }
+/// The parameters that are provided to the [`FapiCallbacks::branch_cb`] callback.
+#[derive(Debug)]
+pub struct BranchCbParam<'a> {
+    /// Identifies the policy (path) being executed for which a branch choice is requested.
+    pub object_path: &'a str,
+    /// Description as provided in the policy definition (optional).
+    pub description: Option<&'a str>,
+    /// A list of human readable names for the branches as from the *PolicyOR* statement.
+    pub branches: Vec<&'a str>,
+}
 
-    /// Creates a new callback instance with additional data.
-    ///
-    /// The supplied `sign_fn` will be called whenever the FAPI requests a signature from the application. The purpose of this signature is to authorize a policy execution containing a *PolicySigned* element. This function receives a [`SignCallbackParam`] as parameter; it shall return `Some(value)`, if a signature value is provided by the application, or `None`, if **no** signature value is provided.
-    ///
-    /// The application-defined `extra_data` argument will be passed to each invocation of `sign_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(sign_fn: impl Fn(SignCallbackParam, &T) -> Option<Vec<u8>> + 'static + Send, extra_data: T) -> Self {
-        Self::new(move |callback_param| sign_fn(callback_param, &extra_data))
-    }
+/// The parameters that are provided to the [`FapiCallbacks::policy_action_cb`] callback.
+#[derive(Debug)]
+pub struct PolicyActionCbParam<'a> {
+    /// Identifies the policy (path) being executed for which an action is signaled.
+    pub object_path: &'a str,
+    /// The action string as specified in the PolicyAction (optional).
+    pub action: Option<&'a str>,
+}
 
-    /// Request a signature for authorizing use of TPM objects from the application.
-    pub(crate) fn invoke(
-        &mut self,
-        object_path: &CStr,
-        description: Option<&CStr>,
-        public_key: &CStr,
-        key_hint: Option<&CStr>,
-        hash_algo: u32,
-        challenge: &[u8],
-    ) -> Option<&[u8]> {
-        let param = SignCallbackParam::new(object_path, description, public_key, key_hint, hash_algo, challenge);
-        trace!("SignCallback::invoke({:?})", &param);
-        match (self.sign_fn)(param) {
-            Some(value) => {
-                self.sign_data = Some(value);
-                self.sign_data.as_deref()
-            }
-            _ => None,
-        }
-    }
-
-    pub(crate) fn clear_buffer(&mut self) {
-        self.sign_data.take();
+impl<'a> AuthCbParam<'a> {
+    fn new(object_path: &'a CStr, description: Option<&'a CStr>) -> Self {
+        Self { object_path: object_path.to_str().unwrap_or_default(), description: description.map(|str| str.to_str().unwrap_or_default()) }
     }
 }
 
-impl<'a> SignCallbackParam<'a> {
+impl<'a> SignCbParam<'a> {
     fn new(
         object_path: &'a CStr,
         description: Option<&'a CStr>,
@@ -176,69 +84,7 @@ impl<'a> SignCallbackParam<'a> {
     }
 }
 
-impl Debug for SignCallback {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SignCallback").field("sign_fn", &(*self.sign_fn).type_id()).field("sign_data", &self.sign_data).finish()
-    }
-}
-
-// ==========================================================================
-// BranCallback
-// ==========================================================================
-
-/// A callback function that allows the FAPI to request branch choices.
-///
-/// It is usually called during policy evaluation.
-///
-/// Registered to a FAPI context via the [`set_branch_callback()`](crate::FapiContext::set_branch_callback) function.
-pub struct BranCallback {
-    bran_fn: Box<BranCallbackFunction>,
-}
-
-/// Signature of the wrapped [`BranCallback`] function
-type BranCallbackFunction = dyn Fn(BranCallbackParam) -> Option<usize> + Send;
-
-/// Wraps the parameters to be passed to the [`BranCallback`] callback.
-#[derive(Debug)]
-pub struct BranCallbackParam<'a> {
-    /// Identifies the policy (path) being executed for which a branch choice is requested.
-    pub object_path: &'a str,
-    /// Description as provided in the policy definition (optional).
-    pub description: Option<&'a str>,
-    /// A list of human readable names for the branches as from the *PolicyOR* statement.
-    pub branches: Vec<&'a str>,
-}
-
-impl BranCallback {
-    /// Creates a new callback instance.
-    ///
-    /// The supplied `bran_fn` will be called whenever a branch needs to be chosen during policy evaluation. Such choices take place when a policy contains a *PolicyOR* (with more than one branch), or a *PolicyAuthorize* (which has more than one approved policy). This function receives a [`BranCallbackParam`] as parameter; it shall return `Some(n)`, where ***n*** is the zero-based index of the chosen branch (must be less than or equal to `branches.len()-1`), or `None`, if **no** choice can be made.
-    pub fn new(bran_fn: impl Fn(BranCallbackParam) -> Option<usize> + 'static + Send) -> Self {
-        Self { bran_fn: Box::new(bran_fn) }
-    }
-
-    /// Creates a new callback instance with additional data.
-    ///
-    /// The supplied `bran_fn` will be called whenever a branch needs to be chosen during policy evaluation. Such choices take place when a policy contains a *PolicyOR* (with more than one branch), or a *PolicyAuthorize* (which has more than one approved policy). This function receives a [`BranCallbackParam`] as parameter; it shall return `Some(n)`, where ***n*** is the zero-based index of the chosen branch (must be less than or equal to `branches.len()-1`), or `None`, if **no** choice can be made.
-    ///
-    /// The application-defined `extra_data` argument will be passed to each invocation of `bran_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(bran_fn: impl Fn(BranCallbackParam, &T) -> Option<usize> + 'static + Send, extra_data: T) -> Self {
-        Self::new(move |callback_param| bran_fn(callback_param, &extra_data))
-    }
-
-    /// Request a signature for authorizing use of TPM objects from the application.
-    pub(crate) fn invoke(&mut self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Option<usize> {
-        let param = BranCallbackParam::new(object_path, description, branches);
-        trace!("BranCallback::invoke({:?})", &param);
-        (self.bran_fn)(param).inspect(|index| {
-            if *index >= branches.len() {
-                panic!("The chosen branch index #{} is out of range! (must be in the 0..{} range)", index, branches.len() - 1usize);
-            }
-        })
-    }
-}
-
-impl<'a> BranCallbackParam<'a> {
+impl<'a> BranchCbParam<'a> {
     fn new(object_path: &'a CStr, description: Option<&'a CStr>, branches: &'a [&CStr]) -> Self {
         Self {
             object_path: object_path.to_str().unwrap_or_default(),
@@ -248,71 +94,147 @@ impl<'a> BranCallbackParam<'a> {
     }
 }
 
-impl Debug for BranCallback {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BranCallback").field("bran_fn", &(*self.bran_fn).type_id()).finish()
-    }
-}
-
-// ==========================================================================
-// ActnCallback
-// ==========================================================================
-
-/// A callback function that allows the FAPI to notify the application.
-///
-/// It is usually called to announce policy actions.
-///
-/// Registered to a FAPI context via the [`set_policy_action_callback()`](crate::FapiContext::set_policy_action_callback) function.
-pub struct ActnCallback {
-    actn_fn: Box<ActnCallbackFunction>,
-}
-
-/// Signature of the wrapped [`ActnCallback`] function
-type ActnCallbackFunction = dyn Fn(ActnCallbackParam) -> bool + Send;
-
-/// Wraps the parameters to be passed to the [`ActnCallback`] callback.
-#[derive(Debug)]
-pub struct ActnCallbackParam<'a> {
-    /// Identifies the policy (path) being executed for which an action is signaled.
-    pub object_path: &'a str,
-    /// The action string as specified in the PolicyAction (optional).
-    pub action: Option<&'a str>,
-}
-
-impl ActnCallback {
-    /// Creates a new callback instance.
-    ///
-    /// The supplied `actn_fn` will be called whenever a *PolicyAction* element is encountered during policy evaluation. The purpose and reaction to such an event is application dependent. This function receives a [`ActnCallbackParam`] as parameter.
-    pub fn new(actn_fn: impl Fn(ActnCallbackParam) -> bool + 'static + Send) -> Self {
-        Self { actn_fn: Box::new(actn_fn) }
-    }
-
-    /// Creates a new callback instance with additional data.
-    ///
-    /// The supplied `actn_fn` will be called whenever a *PolicyAction* element is encountered during policy evaluation. The purpose and reaction to such an event is application dependent. This function receives a [`ActnCallbackParam`] as parameter.
-    ///
-    /// The application-defined `extra_data` argument will be passed to each invocation of `actn_fn` as an additional parameter.
-    pub fn with_data<T: 'static + Send>(actn_fn: impl Fn(ActnCallbackParam, &T) -> bool + 'static + Send, extra_data: T) -> Self {
-        Self::new(move |callback_param| actn_fn(callback_param, &extra_data))
-    }
-
-    /// Request a signature for authorizing use of TPM objects from the application.
-    pub(crate) fn invoke(&mut self, object_path: &CStr, action: Option<&CStr>) -> bool {
-        let param = ActnCallbackParam::new(object_path, action);
-        trace!("ActnCallback::invoke({:?})", &param);
-        (self.actn_fn)(param)
-    }
-}
-
-impl<'a> ActnCallbackParam<'a> {
+impl<'a> PolicyActionCbParam<'a> {
     fn new(object_path: &'a CStr, action: Option<&'a CStr>) -> Self {
         Self { object_path: object_path.to_str().unwrap_or_default(), action: action.map(|str| str.to_str().unwrap_or_default()) }
     }
 }
 
-impl Debug for ActnCallback {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ActnCallback").field("actn_fn", &(*self.actn_fn).type_id()).finish()
+// ==========================================================================
+// Callbacks trait
+// ==========================================================================
+
+/// Represents the set of application-defined callback functions that the FAPI invokes.
+///
+/// Implementations of this trait can be registered with a FAPI context via the [`FapiContext::set_callbacks()`](crate::FapiContext::set_callbacks) function.
+///
+/// ### Example
+///
+/// ```
+/// #[derive(Debug)]
+/// pub struct MyCallbacks;
+///
+/// impl FapiCallbacks for MyCallbacks {
+///     fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+///         /* ... */
+///     }
+///
+///     fn sign_cb(&self, param: SignCbParam) -> Option<Vec<u8>> {
+///         /* ... */
+///     }
+///
+///     fn branch_cb(&self, param: BranchCbParam) -> Option<usize> {
+///         /* ... */
+///     }
+///
+///     fn policy_action_cb(&self, param: PolicyActionCbParam) -> bool {
+///         /* ... */
+///     }
+/// }
+/// ```
+pub trait FapiCallbacks: Debug + Send {
+    /// A callback function that allows the FAPI to request authorization values.
+    fn auth_cb(&self, _param: AuthCbParam) -> Option<Cow<'static, str>> {
+        None
+    }
+
+    /// A callback function that allows the FAPI to request signatures.
+    ///
+    /// Signatures are requested for authorizing TPM objects.
+    fn sign_cb(&self, _param: SignCbParam) -> Option<Vec<u8>> {
+        None
+    }
+
+    /// A callback function that allows the FAPI to request branch choices.
+    ///
+    /// It is usually called during policy evaluation.
+    fn branch_cb(&self, _param: BranchCbParam) -> Option<usize> {
+        None
+    }
+
+    /// A callback function that allows the FAPI to notify the application.
+    ///
+    /// It is usually called to announce policy actions.
+    fn policy_action_cb(&self, _param: PolicyActionCbParam) -> bool {
+        false
+    }
+}
+
+// ==========================================================================
+// Callbacks wrapper
+// ==========================================================================
+
+#[derive(Debug)]
+pub struct Callbacks {
+    inner: Box<dyn FapiCallbacks>,
+    auth_value: Option<CStringHolder>,
+    sign_data: Option<Vec<u8>>,
+}
+
+impl Callbacks {
+    pub fn new(callbacks: impl FapiCallbacks + 'static) -> Self {
+        Self { inner: Box::new(callbacks), auth_value: None, sign_data: None }
+    }
+
+    pub fn clear(&mut self) {
+        if self.auth_value.is_some() {
+            self.auth_value = None;
+        }
+        if self.sign_data.is_some() {
+            self.sign_data = None;
+        }
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Callback functions
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    pub fn auth_cb(&mut self, object_path: &CStr, description: Option<&CStr>) -> Option<&CStringHolder> {
+        let param = AuthCbParam::new(object_path, description);
+        trace!("Callbacks::auth_cb({:?})", &param);
+        match self.inner.auth_cb(param) {
+            Some(value) => {
+                self.auth_value = CStringHolder::try_from(value).ok();
+                self.auth_value.as_ref()
+            }
+            _ => None,
+        }
+    }
+
+    pub fn sign_cb(
+        &mut self,
+        object_path: &CStr,
+        description: Option<&CStr>,
+        public_key: &CStr,
+        key_hint: Option<&CStr>,
+        hash_algo: u32,
+        challenge: &[u8],
+    ) -> Option<&[u8]> {
+        let param = SignCbParam::new(object_path, description, public_key, key_hint, hash_algo, challenge);
+        trace!("Callbacks::sign_cb({:?})", &param);
+        match self.inner.sign_cb(param) {
+            Some(value) => {
+                self.sign_data = Some(value);
+                self.sign_data.as_deref()
+            }
+            _ => None,
+        }
+    }
+
+    pub fn branch_cb(&mut self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Option<usize> {
+        let param = BranchCbParam::new(object_path, description, branches);
+        trace!("Callbacks::branch_cb({:?})", &param);
+        self.inner.branch_cb(param).inspect(|index| {
+            if *index >= branches.len() {
+                panic!("The chosen branch index #{} is out of range! (must be in the 0..{} range)", index, branches.len() - 1usize);
+            }
+        })
+    }
+
+    pub fn policy_action_cb(&mut self, object_path: &CStr, action: Option<&CStr>) -> bool {
+        let param = PolicyActionCbParam::new(object_path, action);
+        trace!("Callbacks::policy_action_cb({:?})", &param);
+        self.inner.policy_action_cb(param)
     }
 }
 
@@ -322,43 +244,173 @@ impl Debug for ActnCallback {
 
 #[cfg(test)]
 mod tests {
-    use super::{ActnCallback, AuthCallback, BranCallback, SignCallback};
-    use std::ffi::CString;
+    use super::{AuthCbParam, BranchCbParam, FapiCallbacks, HashAlgorithm, PolicyActionCbParam, SignCbParam};
+    use std::borrow::Cow;
+
+    #[derive(Debug)]
+    struct CallbackTest {
+        password: &'static str,
+    }
+
+    impl FapiCallbacks for CallbackTest {
+        fn auth_cb(&self, _param: super::AuthCbParam) -> Option<Cow<'static, str>> {
+            Some(Cow::from(self.password))
+        }
+
+        fn sign_cb(&self, _param: super::SignCbParam) -> Option<Vec<u8>> {
+            Some(b"\x01\x02\x03".to_vec())
+        }
+
+        fn branch_cb(&self, _param: super::BranchCbParam) -> Option<usize> {
+            Some(1usize)
+        }
+
+        fn policy_action_cb(&self, _param: super::PolicyActionCbParam) -> bool {
+            true
+        }
+    }
 
     #[test]
     fn test_callbacks() {
-        let param = CString::new("my param").unwrap();
+        let my_callbacks = CallbackTest { password: "my password" };
+        my_callbacks.auth_cb(AuthCbParam { object_path: "/some/path", description: Some("some object") });
+        my_callbacks.sign_cb(SignCbParam {
+            object_path: "/some/path",
+            description: Some("some object"),
+            public_key: "key_data",
+            key_hint: Some("key hint"),
+            hash_algo: HashAlgorithm::Sha2_256,
+            challenge: b"\x01\x02\x03",
+        });
+        my_callbacks.branch_cb(BranchCbParam { object_path: "/some/path", description: Some("some object"), branches: vec!["first", "second"] });
+        my_callbacks.policy_action_cb(PolicyActionCbParam { object_path: "/some/path", action: Some("some action") });
+    }
+}
 
-        let mut callback = AuthCallback::new(|_param| None);
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, None);
+// ==========================================================================
+// Callback entry points
+// ==========================================================================
 
-        let mut callback = AuthCallback::with_data(|_param, _data| None, "my data");
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, None);
+/// The "native" entry points that will be called by the FAPI directly.
+pub mod entry_point {
+    use super::{
+        super::{
+            fapi_sys::{
+                TSS2_RC,
+                constants::{self, TSS2_RC_SUCCESS},
+            },
+            memory::{ptr_to_cstr_vec, ptr_to_opt_cstr},
+        },
+        Callbacks,
+    };
+    use std::{
+        ffi::{CStr, c_char, c_void},
+        slice,
+    };
 
-        let mut callback = SignCallback::new(|_param| None);
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, None, &param, None, 0, &[0u8]);
+    /// Create FAPI error code from base error code
+    macro_rules! mk_fapi_rc {
+        ($error:ident) => {
+            constants::TSS2_FEATURE_RC_LAYER | constants::$error
+        };
+    }
 
-        let mut callback = SignCallback::with_data(|_param, _data| None, "my data");
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, None, &param, None, 0, &[0u8]);
+    /// Invokes the actual [`FapiCallbacks::auth_cb()`] function
+    pub unsafe extern "C" fn auth_cb(object_path: *const c_char, description: *const c_char, auth: *mut *const c_char, user_data: *mut c_void) -> TSS2_RC {
+        if object_path.is_null() || auth.is_null() || user_data.is_null() {
+            return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
+        }
+        unsafe {
+            match (*(user_data as *mut Callbacks)).auth_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
+                Some(auth_value) => {
+                    *auth = auth_value.as_ptr();
+                    TSS2_RC_SUCCESS
+                }
+                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
+            }
+        }
+    }
 
-        let mut callback = BranCallback::new(|_param| None);
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, None, &[&param]);
+    /// Invokes the actual [`FapiCallbacks::sign_cb()`] function
+    pub unsafe extern "C" fn sign_cb(
+        object_path: *const c_char,
+        description: *const c_char,
+        public_key: *const c_char,
+        key_hint: *const c_char,
+        hash_alg: u32,
+        challenge_data: *const u8,
+        challenge_size: usize,
+        signature_data: *mut *const u8,
+        signature_size: *mut usize,
+        user_data: *mut c_void,
+    ) -> TSS2_RC {
+        if object_path.is_null()
+            || public_key.is_null()
+            || hash_alg == 0u32
+            || challenge_data.is_null()
+            || challenge_size == 0usize
+            || signature_data.is_null()
+            || signature_size.is_null()
+            || user_data.is_null()
+        {
+            return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
+        }
+        unsafe {
+            match (*(user_data as *mut Callbacks)).sign_cb(
+                CStr::from_ptr(object_path),
+                ptr_to_opt_cstr(description),
+                CStr::from_ptr(public_key),
+                ptr_to_opt_cstr(key_hint),
+                hash_alg,
+                slice::from_raw_parts(challenge_data, challenge_size),
+            ) {
+                Some(sign_value) => {
+                    *signature_data = sign_value.as_ptr();
+                    *signature_size = sign_value.len();
+                    TSS2_RC_SUCCESS
+                }
+                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
+            }
+        }
+    }
 
-        let mut callback = BranCallback::with_data(|_param, _data| None, "my data");
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, None, &[&param]);
+    /// Invokes the actual [`FapiCallbacks::branch_cb()`] function
+    pub unsafe extern "C" fn branch_cb(
+        object_path: *const c_char,
+        description: *const c_char,
+        branch_names: *mut *const c_char,
+        num_branches: usize,
+        selected: *mut usize,
+        user_data: *mut c_void,
+    ) -> TSS2_RC {
+        if object_path.is_null() || branch_names.is_null() || num_branches == 0usize || selected.is_null() || user_data.is_null() {
+            return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
+        }
+        unsafe {
+            match (*(user_data as *mut Callbacks)).branch_cb(
+                CStr::from_ptr(object_path),
+                ptr_to_opt_cstr(description),
+                &ptr_to_cstr_vec(branch_names, num_branches)[..],
+            ) {
+                Some(bran_value) => {
+                    *selected = bran_value;
+                    TSS2_RC_SUCCESS
+                }
+                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
+            }
+        }
+    }
 
-        let mut callback = ActnCallback::new(|_param| true);
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, Some(&param));
-
-        let mut callback = ActnCallback::with_data(|_param, _data| true, "my data");
-        let _ = format!("{:?}", callback);
-        callback.invoke(&param, Some(&param));
+    /// Invokes the actual [`FapiCallbacks::policy_action_cb()`] function
+    pub unsafe extern "C" fn policy_action_cb(object_path: *const c_char, action: *const c_char, user_data: *mut c_void) -> TSS2_RC {
+        if object_path.is_null() || user_data.is_null() {
+            return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
+        }
+        unsafe {
+            match (*(user_data as *mut Callbacks)).policy_action_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
+                true => TSS2_RC_SUCCESS,
+                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
+            }
+        }
     }
 }

@@ -7,9 +7,11 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     param::PASSWORD,
     random::{create_seed, generate_bytes},
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::debug;
@@ -18,9 +20,6 @@ use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use std::num::NonZeroUsize;
 use tss2_fapi_rs::{FapiContext, SealFlags};
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const SEAL_TYPE_FLAGS: &[SealFlags] = &[SealFlags::NoDA];
 
@@ -33,7 +32,7 @@ const SEAL_TYPE_FLAGS: &[SealFlags] = &[SealFlags::NoDA];
 #[serial]
 #[named]
 fn test_create_seal() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("/HS/SRK/mySealObj{}", i);
@@ -45,7 +44,8 @@ fn test_create_seal() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create new seal, if not already created
         match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), NonZeroUsize::new(32usize).unwrap(), None, None, None) {
@@ -60,7 +60,7 @@ fn test_create_seal() {
 #[serial]
 #[named]
 fn test_unseal() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let key_path = &format!("/HS/SRK/mySealData{}", i);
@@ -75,7 +75,8 @@ fn test_unseal() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Generate plain-text
         let original_data: [u8; 128usize] = generate_bytes(&mut rng);

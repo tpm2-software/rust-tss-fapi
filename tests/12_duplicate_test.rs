@@ -6,7 +6,7 @@
 
 pub mod common;
 
-use common::{param::PASSWORD, setup::TestConfiguration};
+use common::{callback::MyCallbacks, param::PASSWORD, setup::TestConfiguration, utils::my_tpm_finalizer};
 use function_name::named;
 use log::debug;
 use serial_test::serial;
@@ -14,9 +14,6 @@ use tss2_fapi_rs::{
     FapiContext, ImportData, KeyFlags,
     json::{Error as JsonError, JsonValue},
 };
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const PARENT_KEY_FLAGS: &[KeyFlags] = &[KeyFlags::Restricted, KeyFlags::Decrypt, KeyFlags::NoDA];
 const EXPORT_KEY_FLAGS: &[KeyFlags] = &[KeyFlags::Exportable, KeyFlags::Decrypt, KeyFlags::NoDA];
@@ -30,7 +27,7 @@ const EXPORT_KEY_FLAGS: &[KeyFlags] = &[KeyFlags::Exportable, KeyFlags::Decrypt,
 #[serial]
 #[named]
 fn test_duplicate_key() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let offset = 2usize.checked_mul(i).unwrap();
@@ -49,7 +46,8 @@ fn test_duplicate_key() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Step #1: Create the parent keys

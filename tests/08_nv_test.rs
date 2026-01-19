@@ -7,9 +7,11 @@
 pub mod common;
 
 use common::{
+    callback::MyCallbacks,
     param::PASSWORD,
     random::{create_seed, generate_bytes},
     setup::TestConfiguration,
+    utils::my_tpm_finalizer,
 };
 use function_name::named;
 use log::{debug, trace};
@@ -17,9 +19,6 @@ use rand::{RngCore, SeedableRng, rng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use tss2_fapi_rs::{FapiContext, NvFlags};
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 const NV_ORDINARY_FLAGS: &[NvFlags] = &[NvFlags::NoDA];
 const NV_COUNTER_FLAGS: &[NvFlags] = &[NvFlags::Counter, NvFlags::NoDA];
@@ -35,7 +34,7 @@ const NV_PCR_FLAGS: &[NvFlags] = &[NvFlags::PCR, NvFlags::NoDA];
 #[serial]
 #[named]
 fn test_nv_write() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let nv_path = &format!("nv/Owner/myNv{}", i);
@@ -48,7 +47,8 @@ fn test_nv_write() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
@@ -81,7 +81,7 @@ fn test_nv_write() {
 #[serial]
 #[named]
 fn test_nv_read() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let nv_path = &format!("nv/Owner/myNv{}", i);
@@ -94,7 +94,8 @@ fn test_nv_read() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
@@ -128,7 +129,7 @@ fn test_nv_read() {
 #[serial]
 #[named]
 fn test_nv_counter() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let nv_path = &format!("nv/Owner/myNvCtr{}", i);
@@ -140,7 +141,8 @@ fn test_nv_counter() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), 0usize, None, None) {
@@ -186,7 +188,7 @@ fn test_nv_counter() {
 #[serial]
 #[named]
 fn test_nv_bitset() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let nv_path = &format!("nv/Owner/myNvBits{}", i);
@@ -198,7 +200,8 @@ fn test_nv_bitset() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_BITFIELD_FLAGS), 0usize, None, None) {
@@ -258,7 +261,7 @@ fn test_nv_bitset() {
 #[serial]
 #[named]
 fn test_nv_pcr() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|i| {
         let nv_path = &format!("nv/Owner/myNvPcr{}", i);
@@ -273,7 +276,8 @@ fn test_nv_pcr() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_PCR_FLAGS), 0usize, None, None) {

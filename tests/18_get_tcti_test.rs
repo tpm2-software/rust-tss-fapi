@@ -6,14 +6,11 @@
 
 pub mod common;
 
-use common::{param::PASSWORD, setup::TestConfiguration};
+use common::{callback::MyCallbacks, param::PASSWORD, setup::TestConfiguration, utils::my_tpm_finalizer};
 use function_name::named;
 use log::debug;
 use serial_test::serial;
 use tss2_fapi_rs::FapiContext;
-
-mk_auth_callback!(my_auth_callback, PASSWORD);
-mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 
 // ==========================================================================
 // Test cases
@@ -24,7 +21,7 @@ mk_tpm_finalizer!(my_tpm_finalizer, my_auth_callback);
 #[serial]
 #[named]
 fn test_get_tcti() {
-    let _configuration = TestConfiguration::with_finalizer(my_tpm_finalizer);
+    let _configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
 
     repeat_test!(|_i| {
         // Create FAPI context
@@ -34,7 +31,8 @@ fn test_get_tcti() {
         };
 
         // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, my_auth_callback);
+        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+        tpm_initialize!(context, PASSWORD, callbacks);
 
         // Get TCTI context
         let tcti_context = match context.get_tcti() {

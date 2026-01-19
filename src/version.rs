@@ -10,6 +10,8 @@ static VERSION_INFO_PKG: OnceLock<VersionInfo> = OnceLock::new();
 static VERSION_INFO_SYS: OnceLock<VersionInfo> = OnceLock::new();
 
 /// Contains version information.
+#[derive(Copy, Clone)]
+#[non_exhaustive]
 pub struct VersionInfo {
     /// The *major* version of the software.
     pub major: u16,
@@ -19,18 +21,24 @@ pub struct VersionInfo {
     pub patch: u16,
 }
 
+/// Contains version information.
+#[derive(Copy, Clone)]
+#[non_exhaustive]
+pub struct FapiVersion {
+    /// Version of the `tss2-fapi-rs` package
+    pub package: VersionInfo,
+    /// Versin of the "native" FAPI library that was used to build `tss2-fapi-rs`
+    pub native: VersionInfo,
+}
+
 /// Returns the package version of the **`tss2-fapi-rs`** library.
 ///
 /// Additionally, the version of the "native" FAPI library that was used to build `tss2-fapi-rs` is returned.
-///
-/// ###### Return Value
-///
-/// **`(package_version, fapi_library_version)`**
-pub fn get_version() -> (&'static VersionInfo, &'static VersionInfo) {
-    (
-        VERSION_INFO_PKG.get_or_init(|| parse_version(env!("CARGO_PKG_VERSION", "Package version not defined!"))),
-        VERSION_INFO_SYS.get_or_init(|| parse_version(crate::fapi_sys::TSS2_FAPI_VERSION)),
-    )
+pub fn get_version() -> FapiVersion {
+    FapiVersion {
+        package: *VERSION_INFO_PKG.get_or_init(|| parse_version(env!("CARGO_PKG_VERSION", "Package version not defined!"))),
+        native: *VERSION_INFO_SYS.get_or_init(|| parse_version(crate::fapi_sys::TSS2_FAPI_VERSION)),
+    }
 }
 
 /// Parse a version string that is in the `"major.minor.patch"` format into a [`VersionInfo`] struct.

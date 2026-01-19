@@ -7,7 +7,7 @@
 use env_logger::Builder as EnvLogger;
 use log::{LevelFilter, debug, info, warn};
 use std::borrow::Cow;
-use tss2_fapi_rs::{AuthCallback, AuthCallbackParam, BaseErrorCode, ErrorCode, FapiContext, KeyFlags};
+use tss2_fapi_rs::{AuthCbParam, BaseErrorCode, ErrorCode, FapiCallbacks, FapiContext, KeyFlags};
 
 const MY_KEYFLAG: &[KeyFlags] = &[KeyFlags::Sign, KeyFlags::NoDA];
 const MY_KEYPATH: &str = "HS/SRK/myTestKey";
@@ -44,7 +44,7 @@ fn main() {
     info!("FAPI context created. ({})", context);
 
     // Add authorization callback function
-    match context.set_auth_callback(AuthCallback::new(my_auth_callback)) {
+    match context.set_callbacks(MyCallbacks { password: MY_AUTHVAL }) {
         Ok(_) => info!("Success."),
         Err(error) => panic!("Failed to set up AUTH callback function: {:?}", error),
     }
@@ -83,10 +83,18 @@ fn main() {
     info!("Shutting down...");
 }
 
-/// This function will be called by FAPI in order to request authorization values from the application.
-///
-/// *Note:* For simplicity, in this example, the callback function always returns our password, regardless of the requested object path.
-fn my_auth_callback(auth_param: AuthCallbackParam) -> Option<Cow<'static, str>> {
-    info!("Authorization for object at {:?} has been requested.", auth_param.object_path);
-    Some(Cow::from(MY_AUTHVAL))
+/// Struct to implement our application-defined callback functions
+#[derive(Debug)]
+struct MyCallbacks {
+    password: &'static str,
+}
+
+impl FapiCallbacks for MyCallbacks {
+    /// This function will be called by FAPI in order to request authorization values from the application.
+    ///
+    /// *Note:* For simplicity, in this example, the callback function always returns our password, regardless of the requested object path.
+    fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+        info!("Authorization for object at {:?} has been requested.", param.object_path);
+        Some(Cow::from(self.password))
+    }
 }
