@@ -45,8 +45,7 @@ fn test_pcr_extend() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Extend PCR with data
         match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], None) {
@@ -74,8 +73,7 @@ fn test_pcr_read() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Read current PCR value
         let pcr_value_0 = match context.pcr_read(PCR_NO[i % PCR_NO.len()], false) {
@@ -149,8 +147,7 @@ fn test_pcr_read_with_quote() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Extend PCR with data
         match context.pcr_extend(PCR_NO[i % PCR_NO.len()], &generate_bytes::<128usize>(&mut rng)[..], Some("{ \"test\": \"1st value\" }")) {
@@ -192,8 +189,7 @@ fn test_pcr_quote() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create attestation key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
@@ -251,8 +247,7 @@ fn test_pcr_quote_with_log() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create attestation key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
@@ -312,8 +307,7 @@ fn test_pcr_verify_quote() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create attestation key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {

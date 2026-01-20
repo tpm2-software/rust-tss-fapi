@@ -47,8 +47,7 @@ fn test_nv_write() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
@@ -94,8 +93,7 @@ fn test_nv_read() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
@@ -141,8 +139,7 @@ fn test_nv_counter() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), 0usize, None, None) {
@@ -200,8 +197,7 @@ fn test_nv_bitset() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_BITFIELD_FLAGS), 0usize, None, None) {
@@ -276,8 +272,7 @@ fn test_nv_pcr() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_PCR_FLAGS), 0usize, None, None) {

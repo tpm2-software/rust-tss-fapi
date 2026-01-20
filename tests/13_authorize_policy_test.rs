@@ -51,8 +51,7 @@ fn test_policy_authorize_pubkey() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Step #1: Create the policy siging key [backend]
@@ -183,8 +182,7 @@ fn test_policy_authorize_path() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Step #1: Create the policy siging key [backend]

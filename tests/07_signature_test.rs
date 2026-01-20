@@ -49,8 +49,7 @@ fn test_sign() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
@@ -103,8 +102,7 @@ fn test_sign_with_pubkey() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
@@ -160,8 +158,7 @@ fn test_verify_signature() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {

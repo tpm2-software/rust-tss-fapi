@@ -9,7 +9,7 @@ use std::{ffi::c_char, fmt::Display, num::NonZeroUsize, os::raw::c_void, ptr, sy
 use crate::{
     BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealFlags,
     SignResult, TpmBlobs,
-    callback::{Callbacks, entry_point},
+    callback::{CallbackManager, entry_point},
     fapi_sys::{self, FAPI_CONTEXT, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
     flags::Flags,
     json::{self, JsonValue},
@@ -80,7 +80,7 @@ type TctiOpaqueContextBlob = *mut [u8; 0];
 #[derive(Debug)]
 pub struct FapiContext {
     native_holder: NativeContextHolder,
-    callbacks: Option<Callbacks>,
+    callbacks: Option<CallbackManager>,
 }
 
 /// A struct that wraps the native C pointer to the underlying FAPI_CONTEXT instance
@@ -148,37 +148,41 @@ impl FapiContext {
     // Callback setters
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    /// This function registers application-defined callback functions with the FAPI context.
+    /// This function registers application-defined callback functions with the FAPI context, replacing any previously registered callbacks.
     ///
     /// The callback functions are implemented via the [`FapiCallbacks`](crate::FapiCallbacks) trait.
+    ///
+    /// If successful, the function retruns the previously registered callback functions, which may be `None`.
     ///
     /// *See also:*
     /// - [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
     /// - [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     /// - [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     /// - [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    pub fn set_callbacks(&mut self, callbacks: impl FapiCallbacks + 'static) -> Result<(), ErrorCode> {
-        let _previous = self.callbacks.replace(Callbacks::new(callbacks));
-        let callbacks_ptr = self.callbacks.as_mut().unwrap() as *mut Callbacks as *mut c_void;
+    pub fn set_callbacks(&mut self, callbacks: impl FapiCallbacks + 'static) -> Result<Option<Box<dyn FapiCallbacks>>, ErrorCode> {
+        let previous = self.callbacks.replace(CallbackManager::new(callbacks));
+        let callbacks_ptr = self.callbacks.as_mut().unwrap() as *mut CallbackManager as *mut c_void;
         let results = [
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAuthCB(context, Some(entry_point::auth_cb), callbacks_ptr) }),
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetSignCB(context, Some(entry_point::sign_cb), callbacks_ptr) }),
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetBranchCB(context, Some(entry_point::branch_cb), callbacks_ptr) }),
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetPolicyActionCB(context, Some(entry_point::policy_action_cb), callbacks_ptr) }),
         ];
-        results.iter().try_fold((), |_acc, &result| result)
+        results.iter().try_fold(previous.map(|cb| cb.into_inner()), |acc, ret| ret.map(|_| acc))
     }
 
-    /// This function un-registers any application-defined callback functions that have been registers via the [`set_callbacks()`](FapiContext::set_callbacks) function.
-    pub fn clear_callbacks(&mut self) -> Result<(), ErrorCode> {
-        let _previous = self.callbacks.take();
+    /// This function un-registers the application-defined callback functions that have been registers via [`set_callbacks()`](FapiContext::set_callbacks).
+    ///
+    /// If successful, the function retruns the previously registered callback functions, which may be `None`.
+    pub fn clear_callbacks(&mut self) -> Result<Option<Box<dyn FapiCallbacks>>, ErrorCode> {
+        let previous = self.callbacks.take();
         let results = [
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAuthCB(context, None, ptr::null_mut()) }),
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetSignCB(context, None, ptr::null_mut()) }),
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetBranchCB(context, None, ptr::null_mut()) }),
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetPolicyActionCB(context, None, ptr::null_mut()) }),
         ];
-        results.iter().try_fold((), |_acc, &result| result)
+        results.iter().try_fold(previous.map(|cb| cb.into_inner()), |acc, ret| ret.map(|_| acc))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -31,8 +31,7 @@ fn test_get_tcti() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Get TCTI context
         let tcti_context = match context.get_tcti() {

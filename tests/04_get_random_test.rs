@@ -34,8 +34,7 @@ fn test_get_random() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Fetch random data
         let random_data = match context.get_random(NonZeroUsize::new(128usize).unwrap()) {

@@ -42,8 +42,7 @@ fn test_create_key() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -70,8 +69,7 @@ fn test_list_keys() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         for key_path in key_paths {
@@ -116,8 +114,7 @@ fn test_export_key() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -164,8 +161,7 @@ fn test_import_key() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Import the existing public key
         match context.import(key_path, ImportData::from_pem(PUBLIC_KEY_DATA).unwrap()) {
@@ -199,8 +195,7 @@ fn test_delete() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -240,8 +235,7 @@ fn test_get_tpm_blobs() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -283,8 +277,7 @@ fn test_get_tpm_blobs_with_private() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {
@@ -331,8 +324,7 @@ fn test_get_esys_blob() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
         match context.create_key(key_path, Some(KEY_FLAGS), None, Some(PASSWORD)) {

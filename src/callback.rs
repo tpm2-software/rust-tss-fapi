@@ -6,7 +6,7 @@
 
 use super::{HashAlgorithm, fapi_sys::TPM2_ALG_ID, memory::CStringHolder};
 use log::trace;
-use std::{borrow::Cow, ffi::CStr, fmt::Debug};
+use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug};
 
 // ==========================================================================
 // Callback parameters
@@ -132,8 +132,12 @@ impl<'a> PolicyActionCbParam<'a> {
 ///     }
 /// }
 /// ```
-pub trait FapiCallbacks: Debug + Send {
+pub trait FapiCallbacks: Any + Send + Debug {
     /// A callback function that allows the FAPI to request authorization values.
+    ///
+    /// The default implementation of this function returns `None`. Please override as needed!
+    ///
+    /// *See also:* [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
     fn auth_cb(&self, _param: AuthCbParam) -> Option<Cow<'static, str>> {
         None
     }
@@ -141,6 +145,10 @@ pub trait FapiCallbacks: Debug + Send {
     /// A callback function that allows the FAPI to request signatures.
     ///
     /// Signatures are requested for authorizing TPM objects.
+    ///
+    /// The default implementation of this function returns `None`. Please override as needed!
+    ///
+    /// *See also:* [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     fn sign_cb(&self, _param: SignCbParam) -> Option<Vec<u8>> {
         None
     }
@@ -148,6 +156,10 @@ pub trait FapiCallbacks: Debug + Send {
     /// A callback function that allows the FAPI to request branch choices.
     ///
     /// It is usually called during policy evaluation.
+    ///
+    /// The default implementation of this function returns `None`. Please override as needed!
+    ///
+    /// *See also:* [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     fn branch_cb(&self, _param: BranchCbParam) -> Option<usize> {
         None
     }
@@ -155,23 +167,27 @@ pub trait FapiCallbacks: Debug + Send {
     /// A callback function that allows the FAPI to notify the application.
     ///
     /// It is usually called to announce policy actions.
+    ///
+    /// The default implementation of this function returns `false`. Please override as needed!
+    ///
+    /// *See also:* [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     fn policy_action_cb(&self, _param: PolicyActionCbParam) -> bool {
         false
     }
 }
 
 // ==========================================================================
-// Callbacks wrapper
+// Callbacks manager
 // ==========================================================================
 
 #[derive(Debug)]
-pub struct Callbacks {
+pub struct CallbackManager {
     inner: Box<dyn FapiCallbacks>,
     auth_value: Option<CStringHolder>,
     sign_data: Option<Vec<u8>>,
 }
 
-impl Callbacks {
+impl CallbackManager {
     pub fn new(callbacks: impl FapiCallbacks + 'static) -> Self {
         Self { inner: Box::new(callbacks), auth_value: None, sign_data: None }
     }
@@ -183,6 +199,10 @@ impl Callbacks {
         if self.sign_data.is_some() {
             self.sign_data = None;
         }
+    }
+
+    pub fn into_inner(self) -> Box<dyn FapiCallbacks> {
+        self.inner
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -301,7 +321,7 @@ pub mod entry_point {
             },
             memory::{ptr_to_cstr_vec, ptr_to_opt_cstr},
         },
-        Callbacks,
+        CallbackManager,
     };
     use std::{
         ffi::{CStr, c_char, c_void},
@@ -321,7 +341,7 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut Callbacks)).auth_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
+            match (*(user_data as *mut CallbackManager)).auth_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
                 Some(auth_value) => {
                     *auth = auth_value.as_ptr();
                     TSS2_RC_SUCCESS
@@ -356,7 +376,7 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut Callbacks)).sign_cb(
+            match (*(user_data as *mut CallbackManager)).sign_cb(
                 CStr::from_ptr(object_path),
                 ptr_to_opt_cstr(description),
                 CStr::from_ptr(public_key),
@@ -387,7 +407,7 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut Callbacks)).branch_cb(
+            match (*(user_data as *mut CallbackManager)).branch_cb(
                 CStr::from_ptr(object_path),
                 ptr_to_opt_cstr(description),
                 &ptr_to_cstr_vec(branch_names, num_branches)[..],
@@ -407,7 +427,7 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut Callbacks)).policy_action_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
+            match (*(user_data as *mut CallbackManager)).policy_action_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
                 true => TSS2_RC_SUCCESS,
                 _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
             }

@@ -44,8 +44,7 @@ fn test_create_seal() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new seal, if not already created
         match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), NonZeroUsize::new(32usize).unwrap(), None, None, None) {
@@ -75,8 +74,7 @@ fn test_unseal() {
         };
 
         // Initialize TPM, if not already initialized
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        tpm_initialize!(context, PASSWORD, callbacks);
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Generate plain-text
         let original_data: [u8; 128usize] = generate_bytes(&mut rng);

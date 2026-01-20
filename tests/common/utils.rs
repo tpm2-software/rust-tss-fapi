@@ -48,7 +48,7 @@ macro_rules! skip_test_ifeq {
 /// This function ignores a possible "AlreadyProvisioned" error, because that kind of error is expected for all but the very first test!
 #[macro_export]
 macro_rules! tpm_initialize {
-    ($context:ident, $password:ident, $callbacks:ident) => {
+    ($context:ident, $password:ident, $callbacks:expr) => {
         if let Err(error) = $context.set_callbacks($callbacks) {
             panic!("Setting up the callback has failed: {:?}", error)
         }
@@ -64,7 +64,7 @@ macro_rules! tpm_initialize {
 /// TPM finalizer
 pub fn my_tpm_finalizer(password: &'static str) {
     log::debug!("Cleaning up the TPM now!");
-    let (callbacks, _logger) = MyCallbacks::new(password, None);
+    let callbacks = MyCallbacks::new(password, None);
     if FapiContext::new().and_then(|mut fpai_ctx| fpai_ctx.set_callbacks(callbacks).and_then(|_| fpai_ctx.delete("/"))).is_err() {
         log::warn!("Failed to clean-up test objects, take care!");
     }

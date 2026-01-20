@@ -33,8 +33,7 @@ fn test_provision() {
         };
 
         // Set up auth callback
-        let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
-        if let Err(error) = context.set_callbacks(callbacks) {
+        if let Err(error) = context.set_callbacks(MyCallbacks::new(PASSWORD, None)) {
             panic!("Setting up the callback has failed: {:?}", error)
         }
 
@@ -72,7 +71,7 @@ fn test_to_destruction() {
                 Ok(fpai_ctx) => fpai_ctx,
                 Err(error) => panic!("Failed to create context: {:?}", error),
             };
-            let (callbacks, _logger) = MyCallbacks::new(PASSWORD, None);
+            let callbacks = MyCallbacks::new(PASSWORD, None);
             tpm_initialize!(context, PASSWORD, callbacks);
         }
 

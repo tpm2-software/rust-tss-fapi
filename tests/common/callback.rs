@@ -6,27 +6,8 @@
 
 use super::crypto::{PrivateKey, create_signature};
 use log::{debug, trace, warn};
-use std::{
-    borrow::Cow,
-    sync::{Arc, Mutex},
-};
+use std::{borrow::Cow, sync::RwLock};
 use tss2_fapi_rs::{AuthCbParam, BranchCbParam, PolicyActionCbParam, SignCbParam};
-
-// ==========================================================================
-// Log
-// ==========================================================================
-
-#[derive(Debug)]
-pub struct Logger {
-    pub branches: Vec<String>,
-    pub actions: Vec<String>,
-}
-
-impl Logger {
-    fn new() -> Self {
-        Self { branches: Vec::new(), actions: Vec::new() }
-    }
-}
 
 // ==========================================================================
 // Callbacks
@@ -36,13 +17,21 @@ impl Logger {
 pub struct MyCallbacks {
     password: &'static str,
     private_key: Option<PrivateKey>,
-    logger: Arc<Mutex<Logger>>,
+    branches: RwLock<Vec<String>>,
+    actions: RwLock<Vec<String>>,
 }
 
 impl MyCallbacks {
-    pub fn new(password: &'static str, private_key: Option<PrivateKey>) -> (Self, Arc<Mutex<Logger>>) {
-        let logger = Arc::new(Mutex::new(Logger::new()));
-        (Self { password, private_key, logger: Arc::clone(&logger) }, logger)
+    pub fn new(password: &'static str, private_key: Option<PrivateKey>) -> Self {
+        Self { password, private_key, branches: RwLock::new(Vec::new()), actions: RwLock::new(Vec::new()) }
+    }
+
+    pub fn get_branches(&self) -> Vec<String> {
+        self.branches.read().unwrap().clone()
+    }
+
+    pub fn get_actions(&self) -> Vec<String> {
+        self.actions.read().unwrap().clone()
     }
 }
 
@@ -84,11 +73,10 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
         debug!("(BRAN_CB) Branch for {:?} has been requested!", param.object_path);
         trace!("(BRAN_CB) Parameters: {:?}", param);
 
-        if let Ok(mut logger) = self.logger.try_lock() {
-            logger.branches.clear();
-            for name in param.branches.iter().enumerate() {
-                logger.branches.push(format!("#{},{}", name.0, name.1.trim()));
-            }
+        let mut branches = self.branches.write().unwrap();
+        branches.clear();
+        for name in param.branches.iter().enumerate() {
+            branches.push(format!("#{},{}", name.0, name.1.trim()));
         }
 
         Some(0usize)
@@ -99,10 +87,9 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
         debug!("(ACTN_CB) Action for {:?} has been requested!", param.object_path);
         trace!("(ACTN_CB) Parameters: {:?}", param);
 
-        if let Ok(mut logger) = self.logger.try_lock() {
-            if let Some(action) = param.action {
-                logger.actions.push(action.trim().to_owned());
-            }
+        let mut actions = self.actions.write().unwrap();
+        if let Some(action) = param.action {
+            actions.push(action.trim().to_owned());
         }
 
         param.action.is_some()
