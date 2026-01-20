@@ -25,13 +25,15 @@ fn test_version() {
     repeat_test!(|_i| {
         let version_info = get_version();
         debug!("tss2-fapi-rs package version: {}", version_info.package);
-        debug!("Native FAPI version: {}", version_info.native);
+        debug!("TSS 2.0 FAPI library version: {}", version_info.library);
+
+        let package = black_box(version_info.package);
+        let library = black_box(version_info.library);
 
         // Verify the package version
-        assert_eq!(CURRENT_PKG_VERSION, format!("{}", version_info.package));
+        assert_eq!(CURRENT_PKG_VERSION, format!("{}", package));
 
         // Verify the FAPI version
-        let native_ver = &black_box(version_info.native);
-        assert!((native_ver.major > 3u16) || ((native_ver.major == 3u16) && ((native_ver.minor > 0u16) || (native_ver.patch >= 3u16))));
+        assert!((library.major > 3u16) || ((library.major == 3u16) && ((library.minor > 0u16) || (library.patch >= 3u16))));
     });
 }

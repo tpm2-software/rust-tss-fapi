@@ -25,7 +25,7 @@ const LIBRARY_NAME: &str = "tss2-fapi";
 const LIBRARY_MIN_VERSION: &str = "3.2.0";
 
 /// Regex to parse the version string, assuming the `<major>.<minor>.<patch>` format
-static REGEX_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)\.(\d+)").unwrap());
+static REGEX_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)\.(\d+)([-+._]\S+)?").unwrap());
 
 /// This build scripts is required to detect and link the "native" FAPI library
 fn main() {
@@ -111,13 +111,10 @@ fn detect_tss2_library() -> Result<LibraryConfig, Error> {
 fn write_version_string(path: &Path, version_string: &str) -> Result<(), IoError> {
     // Parse the version string
     let captures = REGEX_VERSION.captures(version_string.trim_ascii()).expect("Invalid version string!");
-    let vers_major = captures.get(1).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
-    let vers_minor = captures.get(2).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
-    let vers_patch = captures.get(3).unwrap().as_str().parse::<u16>().expect("Failed to parse version string!");
 
     // Try to write the version string to the output file
     let mut file = File::create(path).expect("Failed to create output file for version!");
-    writeln!(file, r#"pub const TSS2_FAPI_VERSION: &str = "{}.{}.{}";"#, vers_major, vers_minor, vers_patch)
+    writeln!(file, r#"pub const TSS2_FAPI_VERSION: &str = "{}";"#, captures.get(0).unwrap().as_str())
 }
 
 /// Parse the given 'flag' string as a boolean value

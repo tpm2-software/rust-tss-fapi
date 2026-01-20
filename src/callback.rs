@@ -213,7 +213,7 @@ pub struct CallbackManager {
 }
 
 impl CallbackManager {
-    pub fn new(callbacks: impl FapiCallbacks + 'static) -> Self {
+    pub fn new(callbacks: impl FapiCallbacks) -> Self {
         Self { inner: Box::new(callbacks), auth_value: None, sign_data: None }
     }
 

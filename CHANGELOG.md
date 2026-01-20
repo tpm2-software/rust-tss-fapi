@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.9.0] - 2026-01-20
+
+### Added
+
+- Added the `FapiContext::set_callbacks()` function, which can be used to set or replace all callback functions at once.
+- Added the `FapiContext::clear_callbacks()` function, which can be used to unset all callback functions.
+- Added the `FapiCallbacks` trait, which represents the set of application-defined callback functions that the FAPI invokes.
+
+### Changed
+
+- Function `get_version()` now returns a `FapiVersion` struct.
+- Functions `FapiContext::set_callbacks()` and `FapiContext::clear_callbacks()` now return the previous callbacks.
+
+### Removed
+
+- Removed the `FapiContext::set_auth_callback` function; superseded by `set_callbacks()`.
+- Removed the `FapiContext::set_sign_callback` function; superseded by `set_callbacks()`.
+- Removed the `FapiContext::set_branch_callback` function; superseded by `set_callbacks()`.
+- Removed the `FapiContext::set_policy_action_callback` function; superseded by `set_callbacks()`.
+
 ## [0.8.1] - 2026-01-15
 
 ### Added

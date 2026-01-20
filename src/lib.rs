@@ -456,7 +456,7 @@ pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
 pub use types::{ImportData, QuoteResult, SignResult, TpmBlobs};
-pub use version::{VersionInfo, get_version};
+pub use version::{FapiVersion, VersionInfo, get_version};
 
 // Re-export JSON module
 pub use ::json;

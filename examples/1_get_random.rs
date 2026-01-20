@@ -28,8 +28,8 @@ fn main() {
     info!("TSS2 FAPI Wrapper - Example #1");
 
     // Print library version
-    let version_info = tss2_fapi_rs::get_version();
-    info!("Using tss2-fapi-rs package version: {}, built with native FAPI library version: {}", version_info.package, version_info.native);
+    let version = tss2_fapi_rs::get_version();
+    info!("Using tss2-fapi-rs package version: {}, built with native FAPI library version: {}", version.package, version.library);
 
     // Create a new FAPI context
     info!("Creating FAPI context, please wait...");
