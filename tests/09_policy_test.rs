@@ -20,8 +20,8 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
-use std::{any::Any, fs, path::Path};
-use tss2_fapi_rs::{FapiContext, ImportData, KeyFlags, json::JsonValue};
+use std::{fs, path::Path};
+use tss2_fapi_rs::{FapiCallbacks, FapiContext, ImportData, KeyFlags, json::JsonValue};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 
@@ -188,7 +188,8 @@ fn test_policy_or() {
         };
 
         // Check retrieved branches
-        let callbacks: Box<MyCallbacks> = downcast(context.clear_callbacks().expect("Failed to clear!").expect("No callbacks!")).expect("Downcast has failed!");
+        let callbacks: Box<dyn FapiCallbacks> = context.clear_callbacks().expect("Failed to clear callbacks!").expect("No callbacks!");
+        let callbacks: &MyCallbacks = callbacks.as_any().downcast_ref().expect("Downcast has failed!");
         let branches = callbacks.get_branches();
         assert_eq!(branches.len(), 2);
         assert!(branches[0].eq_ignore_ascii_case("#0,PolicySignedRSA"));
@@ -245,7 +246,8 @@ fn test_policy_action() {
         };
 
         // Check retrieved actions
-        let callbacks: Box<MyCallbacks> = downcast(context.clear_callbacks().expect("Failed to clear!").expect("No callbacks!")).expect("Downcast has failed!");
+        let callbacks: Box<dyn FapiCallbacks> = context.clear_callbacks().expect("Failed to clear callbacks!").expect("No callbacks!");
+        let callbacks: &MyCallbacks = callbacks.as_any().downcast_ref().expect("Downcast has failed!");
         let actions = callbacks.get_actions();
         assert!(!actions.is_empty());
         assert!(actions[0].eq_ignore_ascii_case("myaction"));
@@ -266,9 +268,4 @@ fn read_policy(data_path: &Path, policy_name: &str) -> Option<JsonValue> {
 fn read_private_key(data_path: &Path, key_type: KeyType, key_name: &str) -> Option<PrivateKey> {
     let pem_file = data_path.join("keys").join(format!("{}.pem", key_name));
     fs::read_to_string(pem_file).ok().and_then(|pem_data| load_private_key(&pem_data[..], key_type))
-}
-
-/// Downcast helper
-fn downcast<T: 'static>(boxed: Box<dyn Any>) -> Option<Box<T>> {
-    boxed.downcast().ok()
 }

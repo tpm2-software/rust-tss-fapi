@@ -451,7 +451,7 @@ mod types;
 mod version;
 
 pub use algorithm_id::HashAlgorithm;
-pub use callback::{AuthCbParam, BranchCbParam, FapiCallbacks, PolicyActionCbParam, SignCbParam};
+pub use callback::{AsAny, AuthCbParam, BranchCbParam, FapiCallbacks, PolicyActionCbParam, SignCbParam};
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};

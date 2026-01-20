@@ -101,14 +101,39 @@ impl<'a> PolicyActionCbParam<'a> {
 }
 
 // ==========================================================================
+// AsAny trait
+// ==========================================================================
+
+/// Helper trait that provides the [`as_any()`](AsAny::as_any) and [`as_mut_any()`](AsAny::as_mut_any) functions.
+pub trait AsAny {
+    /// A helper function that returns the implementation as a [`&dyn Any`](std::any::Any) reference.
+    fn as_any(&self) -> &dyn Any;
+
+    /// A helper function that returns the implementation as a [`&mut dyn Any`](std::any::Any) reference.
+    fn as_mut_any(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_mut_any(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+// ==========================================================================
 // Callbacks trait
 // ==========================================================================
 
 /// Represents the set of application-defined callback functions that the FAPI invokes.
 ///
-/// Implementations of this trait can be registered with a FAPI context via the [`FapiContext::set_callbacks()`](crate::FapiContext::set_callbacks) function.
+/// Implementations of this trait are registered with a FAPI context via the [**`FapiContext::set_callbacks()`**](crate::FapiContext::set_callbacks) function.
 ///
 /// ### Example
+///
+/// Applications shall implement this trait as follows:
 ///
 /// ```
 /// #[derive(Debug)]
@@ -132,10 +157,10 @@ impl<'a> PolicyActionCbParam<'a> {
 ///     }
 /// }
 /// ```
-pub trait FapiCallbacks: Any + Send + Debug {
+pub trait FapiCallbacks: AsAny + Send + Debug + 'static {
     /// A callback function that allows the FAPI to request authorization values.
     ///
-    /// The default implementation of this function returns `None`. Please override as needed!
+    /// The default implementation of this function returns `None`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
     fn auth_cb(&self, _param: AuthCbParam) -> Option<Cow<'static, str>> {
@@ -146,7 +171,7 @@ pub trait FapiCallbacks: Any + Send + Debug {
     ///
     /// Signatures are requested for authorizing TPM objects.
     ///
-    /// The default implementation of this function returns `None`. Please override as needed!
+    /// The default implementation of this function returns `None`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     fn sign_cb(&self, _param: SignCbParam) -> Option<Vec<u8>> {
@@ -157,7 +182,7 @@ pub trait FapiCallbacks: Any + Send + Debug {
     ///
     /// It is usually called during policy evaluation.
     ///
-    /// The default implementation of this function returns `None`. Please override as needed!
+    /// The default implementation of this function returns `None`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     fn branch_cb(&self, _param: BranchCbParam) -> Option<usize> {
@@ -168,7 +193,7 @@ pub trait FapiCallbacks: Any + Send + Debug {
     ///
     /// It is usually called to announce policy actions.
     ///
-    /// The default implementation of this function returns `false`. Please override as needed!
+    /// The default implementation of this function returns `false`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     fn policy_action_cb(&self, _param: PolicyActionCbParam) -> bool {

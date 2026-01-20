@@ -148,18 +148,18 @@ impl FapiContext {
     // Callback setters
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    /// This function registers application-defined callback functions with the FAPI context, replacing any previously registered callbacks.
+    /// Registers application-defined callback functions with the FAPI context, replacing the previously registered callbacks.
     ///
-    /// The callback functions are implemented via the [`FapiCallbacks`](crate::FapiCallbacks) trait.
+    /// Please see the [**`FapiCallbacks`**](crate::FapiCallbacks) trait for details!
     ///
-    /// If successful, the function retruns the previously registered callback functions, which may be `None`.
+    /// If successful, the function retruns an option containing the previously registered `FapiCallbacks`, which may be `None`.
     ///
     /// *See also:*
     /// - [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
     /// - [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     /// - [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
     /// - [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    pub fn set_callbacks(&mut self, callbacks: impl FapiCallbacks + 'static) -> Result<Option<Box<dyn FapiCallbacks>>, ErrorCode> {
+    pub fn set_callbacks(&mut self, callbacks: impl FapiCallbacks) -> Result<Option<Box<dyn FapiCallbacks + 'static>>, ErrorCode> {
         let previous = self.callbacks.replace(CallbackManager::new(callbacks));
         let callbacks_ptr = self.callbacks.as_mut().unwrap() as *mut CallbackManager as *mut c_void;
         let results = [
@@ -171,10 +171,16 @@ impl FapiContext {
         results.iter().try_fold(previous.map(|cb| cb.into_inner()), |acc, ret| ret.map(|_| acc))
     }
 
-    /// This function un-registers the application-defined callback functions that have been registers via [`set_callbacks()`](FapiContext::set_callbacks).
+    /// Un-registers the application-defined callback functions that have been registers via [`set_callbacks()`](FapiContext::set_callbacks).
     ///
-    /// If successful, the function retruns the previously registered callback functions, which may be `None`.
-    pub fn clear_callbacks(&mut self) -> Result<Option<Box<dyn FapiCallbacks>>, ErrorCode> {
+    /// If successful, the function retruns an option containing the previously registered `FapiCallbacks`, which may be `None`.
+    ///
+    /// *See also:*
+    /// - [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
+    /// - [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
+    /// - [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
+    /// - [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
+    pub fn clear_callbacks(&mut self) -> Result<Option<Box<dyn FapiCallbacks + 'static>>, ErrorCode> {
         let previous = self.callbacks.take();
         let results = [
             self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAuthCB(context, None, ptr::null_mut()) }),

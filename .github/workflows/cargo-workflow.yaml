@@ -5,7 +5,7 @@ on:
       TOOLCHAIN_MIN:
         required: false
         type: string
-        default: "1.86.0"
+        default: "1.85.0"
       TOOLCHAIN_MAX:
         required: false
         type: string
