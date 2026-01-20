@@ -21,7 +21,7 @@ use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
-use tss2_fapi_rs::{FapiCallbacks, FapiContext, ImportData, KeyFlags, json::JsonValue};
+use tss2_fapi_rs::{FapiContext, ImportData, KeyFlags, json::JsonValue};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 
@@ -188,9 +188,8 @@ fn test_policy_or() {
         };
 
         // Check retrieved branches
-        let callbacks: Box<dyn FapiCallbacks> = context.clear_callbacks().expect("Failed to clear callbacks!").expect("No callbacks!");
-        let callbacks: &MyCallbacks = callbacks.as_any().downcast_ref().expect("Downcast has failed!");
-        let branches = callbacks.get_branches();
+        let callbacks = context.clear_callbacks().expect("Failed to clear callbacks!").expect("No callbacks!");
+        let branches = callbacks.as_any().downcast_ref::<MyCallbacks>().expect("Downcast has failed!").get_branches();
         assert_eq!(branches.len(), 2);
         assert!(branches[0].eq_ignore_ascii_case("#0,PolicySignedRSA"));
         assert!(branches[1].eq_ignore_ascii_case("#1,PolicySignedECC"));
@@ -246,9 +245,8 @@ fn test_policy_action() {
         };
 
         // Check retrieved actions
-        let callbacks: Box<dyn FapiCallbacks> = context.clear_callbacks().expect("Failed to clear callbacks!").expect("No callbacks!");
-        let callbacks: &MyCallbacks = callbacks.as_any().downcast_ref().expect("Downcast has failed!");
-        let actions = callbacks.get_actions();
+        let callbacks = context.clear_callbacks().expect("Failed to clear callbacks!").expect("No callbacks!");
+        let actions = callbacks.as_any().downcast_ref::<MyCallbacks>().expect("Downcast has failed!").get_actions();
         assert!(!actions.is_empty());
         assert!(actions[0].eq_ignore_ascii_case("myaction"));
     });

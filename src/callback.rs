@@ -105,7 +105,7 @@ impl<'a> PolicyActionCbParam<'a> {
 // ==========================================================================
 
 /// Helper trait that provides the [`as_any()`](AsAny::as_any) and [`as_mut_any()`](AsAny::as_mut_any) functions.
-pub trait AsAny {
+pub trait AsAny: Any {
     /// A helper function that returns the implementation as a [`&dyn Any`](std::any::Any) reference.
     fn as_any(&self) -> &dyn Any;
 
