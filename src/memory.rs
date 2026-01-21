@@ -7,6 +7,7 @@
 use std::{
     borrow::Cow,
     ffi::{CStr, CString, NulError, c_char, c_void},
+    pin::Pin,
     ptr, slice,
 };
 
@@ -41,24 +42,21 @@ macro_rules! fail_if_opt_empty {
 // CStringHolder
 // ==========================================================================
 
+/// Pointer to a NUL-terminated `ffi:CString` string
+pub type CStringPointer = *const c_char;
+
 /// Wrapper class to encapsulate a string as `ffi:CString`.
 #[derive(Debug)]
-pub struct CStringHolder {
-    str_data: Option<CString>,
-}
+pub struct CStringHolder(Option<Pin<Box<CString>>>);
 
 impl CStringHolder {
     /// Returns a pointer to the wrapped NUL-terminated string, which is guaranteed to remain valid until the `CStringHolder` instance is dropped.
-    pub fn as_ptr(&self) -> *const c_char {
-        self.str_data.as_ref().map_or(ptr::null(), |str| str.as_ptr())
+    pub fn as_ptr(&self) -> CStringPointer {
+        self.0.as_ref().map_or(ptr::null(), |str| str.as_ptr())
     }
 
-    /* pub fn as_c_str(&self) -> Option<&CStr> {
-        self.str_data.as_ref().map(CString::as_c_str)
-    } */
-
     fn force_clear(&mut self) {
-        if let Some(data) = self.str_data.take() {
+        if let Some(data) = self.0.take() {
             erase_memory(data.as_ptr(), data.count_bytes());
         }
     }
@@ -76,7 +74,7 @@ impl TryFrom<&str> for CStringHolder {
     /// Creates a new `CStringHolder` from a given `&str` slice.
     fn try_from(str: &str) -> Result<Self, ErrorCode> {
         fail_if_empty!(str);
-        Ok(Self { str_data: Some(CString::new(str).expect("Failed to allocate CString!")) })
+        Ok(Self(Some(Box::pin(CString::new(str).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -86,7 +84,7 @@ impl TryFrom<String> for CStringHolder {
     /// Creates a new `CStringHolder` from a given `String` object.
     fn try_from(str: String) -> Result<Self, ErrorCode> {
         fail_if_empty!(str);
-        Ok(Self { str_data: Some(CString::new(str).expect("Failed to allocate CString!")) })
+        Ok(Self(Some(Box::pin(CString::new(str).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -96,7 +94,7 @@ impl TryFrom<Cow<'static, str>> for CStringHolder {
     /// Creates a new `CStringHolder` from a given `Cow<'static, str>` value.
     fn try_from(str: Cow<'static, str>) -> Result<Self, ErrorCode> {
         fail_if_empty!(str);
-        Ok(Self { str_data: Some(cstring_from_cow(str).expect("Failed to allocate CString!")) })
+        Ok(Self(Some(Box::pin(cstring_from_cow(str).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -106,7 +104,7 @@ impl TryFrom<&JsonValue> for CStringHolder {
     /// Creates a new `CStringHolder` from a given `JsonValue` value.
     fn try_from(json: &JsonValue) -> Result<Self, ErrorCode> {
         fail_if_empty!(json);
-        Ok(Self { str_data: Some(CString::new(json.to_string()).expect("Failed to allocate CString!")) })
+        Ok(Self(Some(Box::pin(CString::new(json.to_string()).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -116,7 +114,7 @@ impl TryFrom<Option<&str>> for CStringHolder {
     /// Create sa new `CStringHolder` from a given `Option<&str>`. The new instance will contain a `NULL` pointer, if the given `opt_str` was `None`.
     fn try_from(opt_str: Option<&str>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_str);
-        Ok(Self { str_data: opt_str.map(|str| CString::new(str).expect("Failed to allocate CString!")) })
+        Ok(Self(opt_str.map(|str| Box::pin(CString::new(str).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -126,7 +124,7 @@ impl TryFrom<Option<String>> for CStringHolder {
     /// Create sa new `CStringHolder` from a given `Option<&str>`. The new instance will contain a `NULL` pointer, if the given `opt_str` was `None`.
     fn try_from(opt_str: Option<String>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_str);
-        Ok(Self { str_data: opt_str.map(|str| CString::new(str).expect("Failed to allocate CString!")) })
+        Ok(Self(opt_str.map(|str| Box::pin(CString::new(str).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -136,7 +134,7 @@ impl TryFrom<Option<Cow<'static, str>>> for CStringHolder {
     /// Creates a new `CStringHolder` from a given `Option<Cow<'static, str>>`. The new instance will contain a `NULL` pointer, if the given `opt_str` was `None`.
     fn try_from(opt_str: Option<Cow<'static, str>>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_str);
-        Ok(Self { str_data: opt_str.map(|str| cstring_from_cow(str).expect("Failed to allocate CString!")) })
+        Ok(Self(opt_str.map(|str| Box::pin(cstring_from_cow(str).expect("Failed to allocate CString!")))))
     }
 }
 
@@ -146,7 +144,40 @@ impl TryFrom<Option<&JsonValue>> for CStringHolder {
     /// Creates a new `CStringHolder` from a given `Option<JsonValue>`. The new instance will contain a `NULL` pointer, if the given `opt_json` was `None`.
     fn try_from(opt_json: Option<&JsonValue>) -> Result<Self, ErrorCode> {
         fail_if_opt_empty!(opt_json);
-        Ok(Self { str_data: opt_json.map(|json| CString::new(json.to_string()).expect("Failed to allocate CString!")) })
+        Ok(Self(opt_json.map(|json| Box::pin(CString::new(json.to_string()).expect("Failed to allocate CString!")))))
+    }
+}
+
+// ==========================================================================
+// CDataHolder
+// ==========================================================================
+
+/// Pointer to raw data wrappen in a `CDataHolder` struct
+#[non_exhaustive]
+pub struct RawSlice {
+    pub data: *const u8,
+    pub size: usize,
+}
+
+/// Wrapper class to encapsulate a data as `Vec<u8>`.
+#[derive(Debug, Default)]
+pub struct CDataHolder(Option<Pin<Vec<u8>>>);
+
+impl CDataHolder {
+    /// Returns a pointer to the wrapped data, which is guaranteed to remain valid until the `CDataHolder` instance is dropped.
+    pub fn as_ptr(&self) -> RawSlice {
+        const EMPTY_SLICE: RawSlice = RawSlice { data: ptr::null(), size: 0usize };
+        self.0.as_ref().map_or(EMPTY_SLICE, |data| RawSlice { data: data.as_ptr(), size: data.len() })
+    }
+}
+
+impl TryFrom<Vec<u8>> for CDataHolder {
+    type Error = ErrorCode;
+
+    /// Creates a new `CDataHolder` from a given `Vec<u8>` object.
+    fn try_from(data: Vec<u8>) -> Result<Self, ErrorCode> {
+        fail_if_empty!(data);
+        Ok(Self(Some(Pin::new(data))))
     }
 }
 
@@ -178,11 +209,6 @@ where
     pub fn to_vec(&self) -> Option<Vec<T>> {
         if (!self.data_ptr.is_null()) && (self.length > 0usize) { unsafe { Some(slice::from_raw_parts(self.data_ptr, self.length).to_vec()) } } else { None }
     }
-
-    /* /// Returns a pointer to the wrapped data, which will be valid only until this `FapiMemoryHolder` instance is dropped!
-    pub fn as_ptr(&self) -> *const T {
-        self.data_ptr
-    } */
 }
 
 impl FapiMemoryHolder<c_char> {
@@ -243,7 +269,7 @@ pub fn ptr_to_opt_cstr<'a>(str_ptr: *const c_char) -> Option<&'a CStr> {
 }
 
 /// Create a vector of strings from a "raw" array of `c_char` pointers
-pub fn ptr_to_cstr_vec<'a>(str_ptr: *mut *const c_char, count: usize) -> Vec<&'a CStr> {
+pub fn ptr_to_cstr_vec<'a>(str_ptr: *const *const c_char, count: usize) -> Vec<&'a CStr> {
     unsafe {
         let list: &[*const c_char] = slice::from_raw_parts(str_ptr, count);
         list.iter().map(|ptr| CStr::from_ptr(*ptr)).collect()

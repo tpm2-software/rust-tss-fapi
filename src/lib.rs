@@ -88,7 +88,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.10.0"
+//! tss2-fapi-rs = "0.11.0"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
@@ -439,7 +439,7 @@ mod types;
 mod version;
 
 pub use algorithm_id::HashAlgorithm;
-pub use callback::{AsAny, AuthCbParam, BranchCbParam, Callbacks, FapiCallbacks, PolicyActionCbParam, SignCbParam};
+pub use callback::{AuthCbParam, BranchCbParam, Callbacks, FapiCallbacks, PolicyActionCbParam, SignCbParam};
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};

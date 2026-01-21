@@ -4,9 +4,13 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use super::{HashAlgorithm, fapi_sys::TPM2_ALG_ID, memory::CStringHolder};
+use super::{
+    HashAlgorithm,
+    fapi_sys::TPM2_ALG_ID,
+    memory::{CDataHolder, CStringHolder, CStringPointer, RawSlice},
+};
 use log::trace;
-use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug};
+use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug, sync::Mutex};
 
 // ==========================================================================
 // Callback parameters
@@ -14,6 +18,7 @@ use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug};
 
 /// The parameters that are provided to the [`FapiCallbacks::auth_cb`] callback.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct AuthCbParam<'a> {
     /// Identifies the TPM object (path) for which an authorization value is requested.
     pub object_path: &'a str,
@@ -23,6 +28,7 @@ pub struct AuthCbParam<'a> {
 
 /// The parameters that are provided to the [`FapiCallbacks::sign_cb`] callback.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct SignCbParam<'a> {
     /// Identifies the policy (path) being executed for which a signature is requested.
     pub object_path: &'a str,
@@ -40,6 +46,7 @@ pub struct SignCbParam<'a> {
 
 /// The parameters that are provided to the [`FapiCallbacks::branch_cb`] callback.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct BranchCbParam<'a> {
     /// Identifies the policy (path) being executed for which a branch choice is requested.
     pub object_path: &'a str,
@@ -51,6 +58,7 @@ pub struct BranchCbParam<'a> {
 
 /// The parameters that are provided to the [`FapiCallbacks::policy_action_cb`] callback.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct PolicyActionCbParam<'a> {
     /// Identifies the policy (path) being executed for which an action is signaled.
     pub object_path: &'a str,
@@ -143,19 +151,19 @@ impl<T: Any> AsAny for T {
 /// pub struct MyCallbacks;
 ///
 /// impl FapiCallbacks for MyCallbacks {
-///     fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+///     fn auth_cb(&mut self, param: AuthCbParam) -> Option<Cow<'static, str>> {
 ///         /* ... */
 ///     }
 ///
-///     fn sign_cb(&self, param: SignCbParam) -> Option<Vec<u8>> {
+///     fn sign_cb(&mut self, param: SignCbParam) -> Option<Vec<u8>> {
 ///         /* ... */
 ///     }
 ///
-///     fn branch_cb(&self, param: BranchCbParam) -> Option<usize> {
+///     fn branch_cb(&mut self, param: BranchCbParam) -> Option<usize> {
 ///         /* ... */
 ///     }
 ///
-///     fn policy_action_cb(&self, param: PolicyActionCbParam) -> bool {
+///     fn policy_action_cb(&mut self, param: PolicyActionCbParam) -> bool {
 ///         /* ... */
 ///     }
 /// }
@@ -166,7 +174,7 @@ pub trait FapiCallbacks: AsAny + Send + 'static {
     /// The default implementation of this function returns `None`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetAuthCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_auth_c_b.html)
-    fn auth_cb(&self, _param: AuthCbParam) -> Option<Cow<'static, str>> {
+    fn auth_cb(&mut self, _param: AuthCbParam) -> Option<Cow<'static, str>> {
         None
     }
 
@@ -177,7 +185,7 @@ pub trait FapiCallbacks: AsAny + Send + 'static {
     /// The default implementation of this function returns `None`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetSignCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    fn sign_cb(&self, _param: SignCbParam) -> Option<Vec<u8>> {
+    fn sign_cb(&mut self, _param: SignCbParam) -> Option<Vec<u8>> {
         None
     }
 
@@ -188,7 +196,7 @@ pub trait FapiCallbacks: AsAny + Send + 'static {
     /// The default implementation of this function returns `None`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetBranchCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    fn branch_cb(&self, _param: BranchCbParam) -> Option<usize> {
+    fn branch_cb(&mut self, _param: BranchCbParam) -> Option<usize> {
         None
     }
 
@@ -199,8 +207,20 @@ pub trait FapiCallbacks: AsAny + Send + 'static {
     /// The default implementation of this function returns `false`. Please override the function as needed!
     ///
     /// *See also:* [`Fapi_SetPolicyActionCB()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___set_sign_c_b.html)
-    fn policy_action_cb(&self, _param: PolicyActionCbParam) -> bool {
+    fn policy_action_cb(&mut self, _param: PolicyActionCbParam) -> bool {
         false
+    }
+}
+
+impl dyn FapiCallbacks {
+    /// Downcast this `dyn FapiCallbacks` to a reference of the concrete type **`T`**.
+    pub fn downcast<T: 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+
+    /// Downcast this `dyn FapiCallbacks` to a mutable reference of the concrete type **`T`**.
+    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.as_mut_any().downcast_mut()
     }
 }
 
@@ -273,20 +293,79 @@ impl Callbacks {
 }
 
 impl FapiCallbacks for Callbacks {
-    fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+    fn auth_cb(&mut self, param: AuthCbParam) -> Option<Cow<'static, str>> {
         (self.auth_fn)(param)
     }
 
-    fn sign_cb(&self, param: SignCbParam) -> Option<Vec<u8>> {
+    fn sign_cb(&mut self, param: SignCbParam) -> Option<Vec<u8>> {
         (self.sign_fn)(param)
     }
 
-    fn branch_cb(&self, param: BranchCbParam) -> Option<usize> {
+    fn branch_cb(&mut self, param: BranchCbParam) -> Option<usize> {
         (self.branch_fn)(param)
     }
 
-    fn policy_action_cb(&self, param: PolicyActionCbParam) -> bool {
+    fn policy_action_cb(&mut self, param: PolicyActionCbParam) -> bool {
         (self.policy_action_fn)(param)
+    }
+}
+
+// ==========================================================================
+// Temporary data holder
+// ==========================================================================
+
+/// Holds the temporary data to be returned to the FAPI by the callback
+///
+/// **Note:** We pass the return value from the application-defined callback function to the FAPI *as a pointer*, so we need to keep the actual object alive inside the `tss2-fapi-rs` layer, at least until the next FAPI function call, because otherwise we create a dangling pointer!
+#[derive(Debug, Default)]
+enum TemporaryData {
+    #[default]
+    Empty,
+    String(CStringHolder),
+    Data(CDataHolder),
+}
+
+impl TemporaryData {
+    fn set_string(&mut self, string: CStringHolder) -> CStringPointer {
+        *self = Self::String(string);
+        match self {
+            TemporaryData::String(string_ref) => string_ref.as_ptr(),
+            _ => unreachable!(),
+        }
+    }
+
+    fn set_data(&mut self, data: CDataHolder) -> RawSlice {
+        *self = Self::Data(data);
+        match self {
+            TemporaryData::Data(data_ref) => data_ref.as_ptr(),
+            _ => unreachable!(),
+        }
+    }
+
+    fn clear(&mut self) {
+        *self = TemporaryData::Empty;
+    }
+}
+
+// ==========================================================================
+// Callbacks holder
+// ==========================================================================
+
+/// Holds the `FapiCallbacks` reference and the temporary buffers
+struct CallbackHolder {
+    callbacks: Box<dyn FapiCallbacks>,
+    temp: TemporaryData,
+}
+
+impl CallbackHolder {
+    fn new(callbacks: Box<dyn FapiCallbacks>) -> Self {
+        Self { callbacks, temp: Default::default() }
+    }
+}
+
+impl Debug for CallbackHolder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallbackHolder").field("callbacks", &self.callbacks.as_any().type_id()).field("temp", &self.temp).finish()
     }
 }
 
@@ -294,139 +373,66 @@ impl FapiCallbacks for Callbacks {
 // Callbacks manager
 // ==========================================================================
 
-pub struct CallbackManager {
-    inner: Box<dyn FapiCallbacks>,
-    auth_value: Option<CStringHolder>,
-    sign_data: Option<Vec<u8>>,
-}
+/// Internal struct that wraps the application-provided callbacks
+#[derive(Debug)]
+pub struct CallbackManager(Mutex<CallbackHolder>);
 
 impl CallbackManager {
     pub fn new(callbacks: impl FapiCallbacks) -> Self {
-        Self { inner: Box::new(callbacks), auth_value: None, sign_data: None }
+        Self(Mutex::new(CallbackHolder::new(Box::new(callbacks))))
     }
 
-    pub fn clear(&mut self) {
-        if self.auth_value.is_some() {
-            self.auth_value = None;
-        }
-        if self.sign_data.is_some() {
-            self.sign_data = None;
-        }
+    pub fn clear_temp(&self) {
+        let mut lock = self.0.lock().unwrap();
+        lock.temp.clear();
     }
 
     pub fn into_inner(self) -> Box<dyn FapiCallbacks> {
-        self.inner
+        self.0.into_inner().unwrap().callbacks
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // Callback functions
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    pub fn auth_cb(&mut self, object_path: &CStr, description: Option<&CStr>) -> Option<&CStringHolder> {
+    fn auth_cb(&self, object_path: &CStr, description: Option<&CStr>) -> Option<CStringPointer> {
+        let mut lock = self.0.lock().unwrap();
         let param = AuthCbParam::new(object_path, description);
         trace!("Callbacks::auth_cb({:?})", &param);
-        match self.inner.auth_cb(param) {
-            Some(value) => {
-                self.auth_value = CStringHolder::try_from(value).ok();
-                self.auth_value.as_ref()
-            }
-            _ => None,
-        }
+        lock.callbacks.auth_cb(param).and_then(|str| CStringHolder::try_from(str).ok()).map(|value| lock.temp.set_string(value))
     }
 
-    pub fn sign_cb(
-        &mut self,
+    fn sign_cb(
+        &self,
         object_path: &CStr,
         description: Option<&CStr>,
         public_key: &CStr,
         key_hint: Option<&CStr>,
         hash_algo: u32,
         challenge: &[u8],
-    ) -> Option<&[u8]> {
+    ) -> Option<RawSlice> {
+        let mut lock = self.0.lock().unwrap();
         let param = SignCbParam::new(object_path, description, public_key, key_hint, hash_algo, challenge);
         trace!("Callbacks::sign_cb({:?})", &param);
-        match self.inner.sign_cb(param) {
-            Some(value) => {
-                self.sign_data = Some(value);
-                self.sign_data.as_deref()
-            }
-            _ => None,
-        }
+        lock.callbacks.sign_cb(param).and_then(|data| CDataHolder::try_from(data).ok()).map(|value| lock.temp.set_data(value))
     }
 
-    pub fn branch_cb(&mut self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Option<usize> {
+    fn branch_cb(&self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Option<usize> {
+        let mut lock = self.0.lock().unwrap();
         let param = BranchCbParam::new(object_path, description, branches);
         trace!("Callbacks::branch_cb({:?})", &param);
-        self.inner.branch_cb(param).inspect(|index| {
-            if *index >= branches.len() {
-                panic!("The chosen branch index #{} is out of range! (must be in the 0..{} range)", index, branches.len() - 1usize);
+        lock.callbacks.branch_cb(param).inspect(|&index| {
+            if index >= branches.len() {
+                panic!("The chosen branch index #{} is out of range!", index);
             }
         })
     }
 
-    pub fn policy_action_cb(&mut self, object_path: &CStr, action: Option<&CStr>) -> bool {
+    fn policy_action_cb(&self, object_path: &CStr, action: Option<&CStr>) -> bool {
+        let mut lock = self.0.lock().unwrap();
         let param = PolicyActionCbParam::new(object_path, action);
         trace!("Callbacks::policy_action_cb({:?})", &param);
-        self.inner.policy_action_cb(param)
-    }
-}
-
-impl Debug for CallbackManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CallbackManager")
-            .field("inner", &self.inner.as_any().type_id())
-            .field("auth_value", &self.auth_value)
-            .field("sign_data", &self.sign_data)
-            .finish()
-    }
-}
-
-// ==========================================================================
-// Unit tests
-// ==========================================================================
-
-#[cfg(test)]
-mod tests {
-    use super::{AuthCbParam, BranchCbParam, FapiCallbacks, HashAlgorithm, PolicyActionCbParam, SignCbParam};
-    use std::borrow::Cow;
-
-    #[derive(Debug)]
-    struct CallbackTest {
-        password: &'static str,
-    }
-
-    impl FapiCallbacks for CallbackTest {
-        fn auth_cb(&self, _param: super::AuthCbParam) -> Option<Cow<'static, str>> {
-            Some(Cow::from(self.password))
-        }
-
-        fn sign_cb(&self, _param: super::SignCbParam) -> Option<Vec<u8>> {
-            Some(b"\x01\x02\x03".to_vec())
-        }
-
-        fn branch_cb(&self, _param: super::BranchCbParam) -> Option<usize> {
-            Some(1usize)
-        }
-
-        fn policy_action_cb(&self, _param: super::PolicyActionCbParam) -> bool {
-            true
-        }
-    }
-
-    #[test]
-    fn test_callbacks() {
-        let my_callbacks = CallbackTest { password: "my password" };
-        my_callbacks.auth_cb(AuthCbParam { object_path: "/some/path", description: Some("some object") });
-        my_callbacks.sign_cb(SignCbParam {
-            object_path: "/some/path",
-            description: Some("some object"),
-            public_key: "key_data",
-            key_hint: Some("key hint"),
-            hash_algo: HashAlgorithm::Sha2_256,
-            challenge: b"\x01\x02\x03",
-        });
-        my_callbacks.branch_cb(BranchCbParam { object_path: "/some/path", description: Some("some object"), branches: vec!["first", "second"] });
-        my_callbacks.policy_action_cb(PolicyActionCbParam { object_path: "/some/path", action: Some("some action") });
+        lock.callbacks.policy_action_cb(param)
     }
 }
 
@@ -448,7 +454,7 @@ pub mod entry_point {
     };
     use std::{
         ffi::{CStr, c_char, c_void},
-        slice,
+        ptr, slice,
     };
 
     /// Create FAPI error code from base error code
@@ -464,13 +470,13 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut CallbackManager)).auth_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
-                Some(auth_value) => {
-                    *auth = auth_value.as_ptr();
-                    TSS2_RC_SUCCESS
-                }
-                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-            }
+            let manager = &*(user_data as *const CallbackManager);
+            let (auth_value, retval) = match manager.auth_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(description)) {
+                Some(auth) => (auth, TSS2_RC_SUCCESS),
+                _ => (ptr::null(), mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE)),
+            };
+            *auth = auth_value;
+            retval
         }
     }
 
@@ -499,7 +505,8 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut CallbackManager)).sign_cb(
+            let manager = &*(user_data as *const CallbackManager);
+            let (sign_data_ptr, sign_data_len, retval) = match manager.sign_cb(
                 CStr::from_ptr(object_path),
                 ptr_to_opt_cstr(description),
                 CStr::from_ptr(public_key),
@@ -507,13 +514,12 @@ pub mod entry_point {
                 hash_alg,
                 slice::from_raw_parts(challenge_data, challenge_size),
             ) {
-                Some(sign_value) => {
-                    *signature_data = sign_value.as_ptr();
-                    *signature_size = sign_value.len();
-                    TSS2_RC_SUCCESS
-                }
-                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-            }
+                Some(sign_value) => (sign_value.data, sign_value.size, TSS2_RC_SUCCESS),
+                _ => (ptr::null(), 0usize, mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE)),
+            };
+            *signature_data = sign_data_ptr;
+            *signature_size = sign_data_len;
+            retval
         }
     }
 
@@ -530,17 +536,14 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut CallbackManager)).branch_cb(
-                CStr::from_ptr(object_path),
-                ptr_to_opt_cstr(description),
-                &ptr_to_cstr_vec(branch_names, num_branches)[..],
-            ) {
-                Some(bran_value) => {
-                    *selected = bran_value;
-                    TSS2_RC_SUCCESS
-                }
-                _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
-            }
+            let manager = &*(user_data as *const CallbackManager);
+            let (selected_index, retval) =
+                match manager.branch_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(description), &ptr_to_cstr_vec(branch_names, num_branches)[..]) {
+                    Some(selected) => (selected, TSS2_RC_SUCCESS),
+                    _ => (0usize, mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE)),
+                };
+            *selected = selected_index;
+            retval
         }
     }
 
@@ -550,10 +553,94 @@ pub mod entry_point {
             return mk_fapi_rc!(TSS2_BASE_RC_BAD_VALUE);
         }
         unsafe {
-            match (*(user_data as *mut CallbackManager)).policy_action_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
+            let manager = &*(user_data as *const CallbackManager);
+            match manager.policy_action_cb(CStr::from_ptr(object_path), ptr_to_opt_cstr(action)) {
                 true => TSS2_RC_SUCCESS,
                 _ => mk_fapi_rc!(TSS2_BASE_RC_GENERAL_FAILURE),
             }
         }
+    }
+}
+
+// ==========================================================================
+// Unit tests
+// ==========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::{AuthCbParam, BranchCbParam, FapiCallbacks, HashAlgorithm, PolicyActionCbParam, SignCbParam};
+    use std::borrow::Cow;
+
+    struct CallbackTest {
+        password_str: &'static str,
+        auth_paths: Vec<String>,
+        sign_paths: Vec<String>,
+        branch_paths: Vec<String>,
+        action_paths: Vec<String>,
+    }
+
+    impl CallbackTest {
+        pub fn new(password_str: &'static str) -> Self {
+            Self { password_str, auth_paths: Vec::new(), sign_paths: Vec::new(), branch_paths: Vec::new(), action_paths: Vec::new() }
+        }
+
+        pub fn get_paths(&self) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
+            (self.auth_paths.clone(), self.sign_paths.clone(), self.branch_paths.clone(), self.action_paths.clone())
+        }
+    }
+
+    impl FapiCallbacks for CallbackTest {
+        fn auth_cb(&mut self, param: super::AuthCbParam) -> Option<Cow<'static, str>> {
+            self.auth_paths.push(param.object_path.to_owned());
+            Some(Cow::from(self.password_str))
+        }
+
+        fn sign_cb(&mut self, param: super::SignCbParam) -> Option<Vec<u8>> {
+            self.sign_paths.push(param.object_path.to_owned());
+            Some(b"\x01\x02\x03".to_vec())
+        }
+
+        fn branch_cb(&mut self, param: super::BranchCbParam) -> Option<usize> {
+            self.branch_paths.push(param.object_path.to_owned());
+            Some(1usize)
+        }
+
+        fn policy_action_cb(&mut self, param: super::PolicyActionCbParam) -> bool {
+            self.action_paths.push(param.object_path.to_owned());
+            true
+        }
+    }
+
+    #[test]
+    fn test_callbacks() {
+        let mut my_callbacks: Box<dyn FapiCallbacks> = Box::new(CallbackTest::new("my_password"));
+        invoke_callbacks(&mut my_callbacks);
+
+        let downcasted: &CallbackTest = my_callbacks.downcast().expect("Downcast failed!");
+        let paths = downcasted.get_paths();
+
+        assert_paths_eq(&paths.0, "/HS/SRK/my/auth/path");
+        assert_paths_eq(&paths.1, "/HS/SRK/my/sign/path");
+        assert_paths_eq(&paths.2, "/HS/SRK/my/bran/path");
+        assert_paths_eq(&paths.3, "/HS/SRK/my/actn/path");
+    }
+
+    fn invoke_callbacks(callbacks: &mut Box<dyn FapiCallbacks>) {
+        callbacks.auth_cb(AuthCbParam { object_path: "/HS/SRK/my/auth/path", description: Some("some object") });
+        callbacks.sign_cb(SignCbParam {
+            object_path: "/HS/SRK/my/sign/path",
+            description: Some("some object"),
+            public_key: "key_data",
+            key_hint: Some("key hint"),
+            hash_algo: HashAlgorithm::Sha2_256,
+            challenge: b"\x01\x02\x03",
+        });
+        callbacks.branch_cb(BranchCbParam { object_path: "/HS/SRK/my/bran/path", description: Some("some object"), branches: vec!["first", "second"] });
+        callbacks.policy_action_cb(PolicyActionCbParam { object_path: "/HS/SRK/my/actn/path", action: Some("some action") });
+    }
+
+    fn assert_paths_eq(paths: &[String], expected: &str) {
+        assert_eq!(paths.iter().filter(|&str| str.eq(expected)).count(), 1usize);
+        assert_eq!(paths.iter().filter(|&str| str.ne(expected)).count(), 0usize);
     }
 }

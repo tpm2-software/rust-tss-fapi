@@ -927,7 +927,7 @@ impl FapiContext {
         };
 
         if let Some(callbacks) = &mut self.callbacks {
-            callbacks.clear();
+            callbacks.clear_temp();
         }
 
         create_result_from_retval(error_code)

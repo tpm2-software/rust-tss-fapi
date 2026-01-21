@@ -37,7 +37,7 @@ impl MyCallbacks {
 
 impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
     /// The "auth" callback implementation used for testing
-    fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+    fn auth_cb(&mut self, param: AuthCbParam) -> Option<Cow<'static, str>> {
         log::debug!("(AUTH_CB) Auth value for path {:?} has been requested!", param.object_path);
         log::trace!("(AUTH_CB) Parameters: {:?}", param);
 
@@ -51,7 +51,7 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
     }
 
     /// The "sign" callback implementation used for testing
-    fn sign_cb(&self, param: SignCbParam) -> Option<Vec<u8>> {
+    fn sign_cb(&mut self, param: SignCbParam) -> Option<Vec<u8>> {
         debug!("(SIGN_CB) Signature for {:?} has been requested!", param.object_path);
         trace!("(SIGN_CB) Parameters: {:?}", param);
 
@@ -69,7 +69,7 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
     }
 
     /// The "branch" callback implementation used for testing
-    fn branch_cb(&self, param: BranchCbParam) -> Option<usize> {
+    fn branch_cb(&mut self, param: BranchCbParam) -> Option<usize> {
         debug!("(BRAN_CB) Branch for {:?} has been requested!", param.object_path);
         trace!("(BRAN_CB) Parameters: {:?}", param);
 
@@ -83,7 +83,7 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
     }
 
     /// The "action" callback implementation used for testing
-    fn policy_action_cb(&self, param: PolicyActionCbParam) -> bool {
+    fn policy_action_cb(&mut self, param: PolicyActionCbParam) -> bool {
         debug!("(ACTN_CB) Action for {:?} has been requested!", param.object_path);
         trace!("(ACTN_CB) Parameters: {:?}", param);
 

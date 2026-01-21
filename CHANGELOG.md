@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.11.0] - 2026-01-21
+
+### Changed
+
+- The first parameter of all `FapiCallbacks` functions have been changed from `&self` to `&mut self`.
+
+### Added
+
+- Added the `FapiCallbacks::downcast()` and `FapiCallbacks::downcast_mut()` functions.
+
 ## [0.10.0] - 2026-01-21
 
 ### Added
