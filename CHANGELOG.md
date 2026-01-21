@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.10.0] - 2026-01-21
+
+### Added
+
+- Added the `Callbacks` struct, as a simple generic implementation of the `FapiCallbacks` trait.
+
+### Changed
+
+- The `FapiCallbacks` trait **no** longer has the `Debug` trait bound.
+
 ## [0.9.0] - 2026-01-20
 
 ### Added

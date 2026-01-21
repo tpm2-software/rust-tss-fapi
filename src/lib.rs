@@ -66,33 +66,21 @@
 //! ```rust no_run
 //! use log::info;
 //! use std::borrow::Cow;
-//! use tss2_fapi_rs::{AuthCbParam, FapiCallbacks, FapiContext};
+//! use tss2_fapi_rs::{Callbacks, FapiContext};
 //!
 //! fn main() {
 //!     // Create a new FAPI context
 //!     let mut context = FapiContext::new().expect("Failed to create context!");
 //!
-//!     // Add callback functions
-//!     match context.set_callbacks(MyCallbacks { password: "my_password" }) {
+//!     // Register "auth" callback function
+//!     match context.set_callbacks(Callbacks::with_auth(|_| Some(Cow::from("my_password")))) {
 //!         Ok(_) => info!("Success."),
 //!         Err(error) => panic!("Failed to set up AUTH callback function: {:?}", error),
 //!     }
 //! }
-//!
-//! /// Application-defined callback functions
-//! #[derive(Debug)]
-//! struct MyCallbacks {
-//!     password: &'static str,
-//! }
-//!
-//! impl FapiCallbacks for MyCallbacks {
-//!     /// Function that will be called by the FAPI to request authorization values
-//!     fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
-//!         info!("Authorization for object at {:?} requested.", param.object_path);
-//!         Some(Cow::from(self.password))
-//!     }
-//! }
 //! ```
+//!
+//! Please see the **[`FapiCallbacks`]** documentation for more details!
 //!
 //! ### Usage instructions
 //!
@@ -100,7 +88,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.9.0"
+//! tss2-fapi-rs = "0.10.0"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
@@ -451,7 +439,7 @@ mod types;
 mod version;
 
 pub use algorithm_id::HashAlgorithm;
-pub use callback::{AsAny, AuthCbParam, BranchCbParam, FapiCallbacks, PolicyActionCbParam, SignCbParam};
+pub use callback::{AsAny, AuthCbParam, BranchCbParam, Callbacks, FapiCallbacks, PolicyActionCbParam, SignCbParam};
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};

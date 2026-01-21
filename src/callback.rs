@@ -129,6 +129,10 @@ impl<T: Any> AsAny for T {
 
 /// Represents the set of application-defined callback functions that the FAPI invokes.
 ///
+/// An implementation is **not** required to override *all* callback functions, as the trait provides “blank” default implementations.
+///
+/// Generally, an application overrides only the callback functions that it actually needs.
+///
 /// Implementations of this trait are registered with a FAPI context via the [**`FapiContext::set_callbacks()`**](crate::FapiContext::set_callbacks) function.
 ///
 /// ### Example
@@ -136,7 +140,6 @@ impl<T: Any> AsAny for T {
 /// Applications shall implement this trait as follows:
 ///
 /// ```
-/// #[derive(Debug)]
 /// pub struct MyCallbacks;
 ///
 /// impl FapiCallbacks for MyCallbacks {
@@ -157,7 +160,7 @@ impl<T: Any> AsAny for T {
 ///     }
 /// }
 /// ```
-pub trait FapiCallbacks: AsAny + Send + Debug + 'static {
+pub trait FapiCallbacks: AsAny + Send + 'static {
     /// A callback function that allows the FAPI to request authorization values.
     ///
     /// The default implementation of this function returns `None`. Please override the function as needed!
@@ -202,10 +205,95 @@ pub trait FapiCallbacks: AsAny + Send + Debug + 'static {
 }
 
 // ==========================================================================
+// Callbacks implementation
+// ==========================================================================
+
+/// Provides a simple implementation of the [`FapiCallbacks`](crate::FapiCallbacks) trait.
+#[allow(clippy::type_complexity)]
+pub struct Callbacks {
+    auth_fn: Box<dyn Fn(AuthCbParam) -> Option<Cow<'static, str>> + Send>,
+    sign_fn: Box<dyn Fn(SignCbParam) -> Option<Vec<u8>> + Send>,
+    branch_fn: Box<dyn Fn(BranchCbParam) -> Option<usize> + Send>,
+    policy_action_fn: Box<dyn Fn(PolicyActionCbParam) -> bool + Send>,
+}
+
+impl Callbacks {
+    /// Creates a new `Callbacks` instance with application-defined callback functions.
+    ///
+    /// Instances of this struct are registered with a FAPI context via the [**`FapiContext::set_callbacks()`**](crate::FapiContext::set_callbacks) function.
+    pub fn new<AuthFn, SignFn, BranchFn, PolicyActionFn>(auth_fn: AuthFn, sign_fn: SignFn, branch_fn: BranchFn, policy_action_fn: PolicyActionFn) -> Self
+    where
+        AuthFn: Fn(AuthCbParam) -> Option<Cow<'static, str>> + Send + 'static,
+        SignFn: Fn(SignCbParam) -> Option<Vec<u8>> + Send + 'static,
+        BranchFn: Fn(BranchCbParam) -> Option<usize> + Send + 'static,
+        PolicyActionFn: Fn(PolicyActionCbParam) -> bool + Send + 'static,
+    {
+        Self { auth_fn: Box::new(auth_fn), sign_fn: Box::new(sign_fn), branch_fn: Box::new(branch_fn), policy_action_fn: Box::new(policy_action_fn) }
+    }
+
+    /// Creates a `Callbacks` instance with an application-defined [`auth_cb`](crate::FapiCallbacks::auth_cb) callback function.
+    ///
+    /// All other callback functions will use the default implementation.
+    pub fn with_auth<F>(auth_fn: F) -> Self
+    where
+        F: Fn(AuthCbParam) -> Option<Cow<'static, str>> + Send + 'static,
+    {
+        Self::new(auth_fn, |_| None, |_| None, |_| false)
+    }
+
+    /// Creates a `Callbacks` instance with an application-defined [`sign_cb`](crate::FapiCallbacks::sign_cb) callback function.
+    ///
+    /// All other callback functions will use the default implementation.
+    pub fn with_sign<F>(sign_fn: F) -> Self
+    where
+        F: Fn(SignCbParam) -> Option<Vec<u8>> + Send + 'static,
+    {
+        Self::new(|_| None, sign_fn, |_| None, |_| false)
+    }
+
+    /// Creates a `Callbacks` instance with an application-defined [`branch_cb`](crate::FapiCallbacks::branch_cb) callback function.
+    ///
+    /// All other callback functions will use the default implementation.
+    pub fn with_branch<F>(branch_fn: F) -> Self
+    where
+        F: Fn(BranchCbParam) -> Option<usize> + Send + 'static,
+    {
+        Self::new(|_| None, |_| None, branch_fn, |_| false)
+    }
+
+    /// Creates a `Callbacks` instance with an application-defined [`policy_action_cb`](crate::FapiCallbacks::policy_action_cb) callback function.
+    ///
+    /// All other callback functions will use the default implementation.
+    pub fn with_policy_action<F>(policy_action_fn: F) -> Self
+    where
+        F: Fn(PolicyActionCbParam) -> bool + Send + 'static,
+    {
+        Self::new(|_| None, |_| None, |_| None, policy_action_fn)
+    }
+}
+
+impl FapiCallbacks for Callbacks {
+    fn auth_cb(&self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+        (self.auth_fn)(param)
+    }
+
+    fn sign_cb(&self, param: SignCbParam) -> Option<Vec<u8>> {
+        (self.sign_fn)(param)
+    }
+
+    fn branch_cb(&self, param: BranchCbParam) -> Option<usize> {
+        (self.branch_fn)(param)
+    }
+
+    fn policy_action_cb(&self, param: PolicyActionCbParam) -> bool {
+        (self.policy_action_fn)(param)
+    }
+}
+
+// ==========================================================================
 // Callbacks manager
 // ==========================================================================
 
-#[derive(Debug)]
 pub struct CallbackManager {
     inner: Box<dyn FapiCallbacks>,
     auth_value: Option<CStringHolder>,
@@ -280,6 +368,16 @@ impl CallbackManager {
         let param = PolicyActionCbParam::new(object_path, action);
         trace!("Callbacks::policy_action_cb({:?})", &param);
         self.inner.policy_action_cb(param)
+    }
+}
+
+impl Debug for CallbackManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallbackManager")
+            .field("inner", &self.inner.as_any().type_id())
+            .field("auth_value", &self.auth_value)
+            .field("sign_data", &self.sign_data)
+            .finish()
     }
 }
 
