@@ -7,7 +7,7 @@
 use super::crypto::{PrivateKey, create_signature};
 use log::{debug, trace, warn};
 use std::{borrow::Cow, sync::RwLock};
-use tss2_fapi_rs::{AuthCbParam, BranchCbParam, PolicyActionCbParam, SignCbParam};
+use tss2_fapi_rs::{AuthCbParam, BranchCbParam, Cancelled, CbResult, PolicyActionCbParam, SignCbParam};
 
 // ==========================================================================
 // Callbacks
@@ -37,21 +37,21 @@ impl MyCallbacks {
 
 impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
     /// The "auth" callback implementation used for testing
-    fn auth_cb(&mut self, param: AuthCbParam) -> Option<Cow<'static, str>> {
+    fn auth_cb(&mut self, param: AuthCbParam) -> CbResult<Cow<'static, str>> {
         log::debug!("(AUTH_CB) Auth value for path {:?} has been requested!", param.object_path);
         log::trace!("(AUTH_CB) Parameters: {:?}", param);
 
         let object_path = param.object_path.find('/').map(|pos| &param.object_path[pos + 1usize..]).unwrap_or(param.object_path);
         if !object_path.eq("HS") && !object_path.starts_with("HS/SRK/my") {
             log::warn!("(AUTH_CB) The requested object path {:?} is not recognized!", object_path);
-            return None;
+            return Err(Cancelled);
         }
 
-        Some(Cow::Borrowed(self.password))
+        Ok(Cow::Borrowed(self.password))
     }
 
     /// The "sign" callback implementation used for testing
-    fn sign_cb(&mut self, param: SignCbParam) -> Option<Vec<u8>> {
+    fn sign_cb(&mut self, param: SignCbParam) -> CbResult<Vec<u8>> {
         debug!("(SIGN_CB) Signature for {:?} has been requested!", param.object_path);
         trace!("(SIGN_CB) Parameters: {:?}", param);
 
@@ -62,14 +62,14 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
             } else {
                 warn!("(SIGN_CB) Failed to generate the signature!");
             }
-            signature_value
+            signature_value.ok_or(Cancelled)
         } else {
-            panic!("Private key not loaded!");
+            panic!("Private key has not been loaded!");
         }
     }
 
     /// The "branch" callback implementation used for testing
-    fn branch_cb(&mut self, param: BranchCbParam) -> Option<usize> {
+    fn branch_cb(&mut self, param: BranchCbParam) -> CbResult<usize> {
         debug!("(BRAN_CB) Branch for {:?} has been requested!", param.object_path);
         trace!("(BRAN_CB) Parameters: {:?}", param);
 
@@ -79,12 +79,12 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
             branches.push(format!("#{},{}", name.0, name.1.trim()));
         }
 
-        Some(0usize)
+        Ok(0usize)
     }
 
     /// The "action" callback implementation used for testing
-    fn policy_action_cb(&mut self, param: PolicyActionCbParam) -> bool {
-        debug!("(ACTN_CB) Action for {:?} has been requested!", param.object_path);
+    fn policy_action_cb(&mut self, param: PolicyActionCbParam) -> CbResult<()> {
+        debug!("(ACTN_CB) Action {:?} triggered!", param.object_path);
         trace!("(ACTN_CB) Parameters: {:?}", param);
 
         let mut actions = self.actions.write().unwrap();
@@ -92,6 +92,6 @@ impl tss2_fapi_rs::FapiCallbacks for MyCallbacks {
             actions.push(action.trim().to_owned());
         }
 
-        param.action.is_some()
+        Ok(())
     }
 }

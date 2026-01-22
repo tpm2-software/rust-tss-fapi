@@ -726,6 +726,8 @@ impl FapiContext {
         let cstr_auth = CStringHolder::try_from(auth_val)?;
         let (seal_size, seal_data) = data.into_raw_data()?;
 
+        debug_assert!(seal_data.as_ptr().is_null() || (seal_data.len() == seal_size.get()));
+
         self.fapi_call(false, |context| unsafe {
             fapi_sys::Fapi_CreateSeal(
                 context,

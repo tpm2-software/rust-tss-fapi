@@ -8,18 +8,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Added
 
-- GitHub Actions: Run the examples and integration tests also on the `aarch64` platform.
+- GitHub Actions: Run the examples and integration tests also on the `aarch64` (ARM64) platform.
 
 ### Changed
 
 - Improved `FapiContext::create_seal()` to accept either a non-empty `&[u8]` slice or a `NonZeroUsize` value.
+- Changed the signature of all callback functions to return a `CbResult<T>` result, which is defined as `Result<T, Cancelled>`.
 - Various improvements to internal memory handling.
 
 ## [0.11.0] - 2026-01-21
 
 ### Changed
 
-- The first parameter of all `FapiCallbacks` functions have been changed from `&self` to `&mut self`.
+- The first parameter of all `FapiCallbacks` functions has been changed from `&self` to `&mut self`.
 
 ### Added
 

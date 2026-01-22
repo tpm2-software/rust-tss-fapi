@@ -103,6 +103,9 @@ enum SealVariant<'a> {
     Data(&'a [u8]),
 }
 
+/// The size of the sealed object and, optionally, the initial data
+pub type RawSealInfo = (NonZeroUsize, CBinaryHolder);
+
 /// Data to be sealed, either a non-zero size or some explicit data.
 ///
 /// Instances of this struct may be used with the [`FapiContext::create_seal()`](crate::FapiContext::create_seal) function.
@@ -125,12 +128,13 @@ impl<'a> SealData<'a> {
     }
 
     /// Returns the actual seal size and the associated data (if any)
-    pub(crate) fn into_raw_data(self) -> Result<(NonZeroUsize, CBinaryHolder), ErrorCode> {
+    pub(crate) fn into_raw_data(self) -> Result<RawSealInfo, ErrorCode> {
         match self.0 {
             SealVariant::Size(size) => Ok((size, CBinaryHolder::empty())),
             SealVariant::Data(data) => {
                 let cstr_data = CBinaryHolder::try_from(data)?;
-                Ok((NonZeroUsize::new(cstr_data.len()).expect("Size must not be zero!"), cstr_data))
+                let cstr_size = NonZeroUsize::new(cstr_data.len()).expect("Size must not be zero!");
+                Ok((cstr_size, cstr_data))
             }
         }
     }
