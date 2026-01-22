@@ -43,6 +43,6 @@ fn test_get_tcti() {
         debug!("TCTI: {:?}", tcti_context);
 
         // Verify
-        assert!(!tcti_context.is_null())
+        assert!(!tcti_context.0.is_null())
     });
 }

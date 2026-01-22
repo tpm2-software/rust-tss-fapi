@@ -7,7 +7,7 @@
 use super::{
     HashAlgorithm,
     fapi_sys::TPM2_ALG_ID,
-    memory::{CDataHolder, CStringHolder, CStringPointer, RawSlice},
+    memory::{CBinaryHolder, CStringHolder, CStringPointer, RawSlice},
 };
 use log::trace;
 use std::{any::Any, borrow::Cow, ffi::CStr, fmt::Debug, sync::Mutex};
@@ -322,7 +322,7 @@ enum TemporaryData {
     #[default]
     Empty,
     String(CStringHolder),
-    Data(CDataHolder),
+    Data(CBinaryHolder),
 }
 
 impl TemporaryData {
@@ -334,10 +334,10 @@ impl TemporaryData {
         }
     }
 
-    fn set_data(&mut self, data: CDataHolder) -> RawSlice {
+    fn set_data(&mut self, data: CBinaryHolder) -> RawSlice {
         *self = Self::Data(data);
         match self {
-            TemporaryData::Data(data_ref) => data_ref.as_ptr(),
+            TemporaryData::Data(data_ref) => data_ref.as_slice(),
             _ => unreachable!(),
         }
     }
@@ -414,7 +414,7 @@ impl CallbackManager {
         let mut lock = self.0.lock().unwrap();
         let param = SignCbParam::new(object_path, description, public_key, key_hint, hash_algo, challenge);
         trace!("Callbacks::sign_cb({:?})", &param);
-        lock.callbacks.sign_cb(param).and_then(|data| CDataHolder::try_from(data).ok()).map(|value| lock.temp.set_data(value))
+        lock.callbacks.sign_cb(param).and_then(|data| CBinaryHolder::try_from(data).ok()).map(|value| lock.temp.set_data(value))
     }
 
     fn branch_cb(&self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Option<usize> {

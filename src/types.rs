@@ -4,7 +4,15 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use crate::{ErrorCode, InternalError, json::JsonValue, memory::CStringHolder};
+use crate::{
+    ErrorCode, InternalError,
+    json::JsonValue,
+    memory::{CBinaryHolder, CStringHolder},
+};
+use std::num::NonZeroUsize;
+
+/* Const */
+const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 
 // ==========================================================================
 // Helper macros
@@ -67,7 +75,7 @@ impl<'a> ImportData<'a> {
         {
             Ok(Self(ImportVariant::Pem(pem_data)))
         } else {
-            Err(ErrorCode::InternalError(InternalError::InvalidArguments))
+            Err(ERR_INVALID_ARGUMENTS)
         }
     }
 }
@@ -79,6 +87,51 @@ impl TryFrom<ImportData<'_>> for CStringHolder {
         match data.0 {
             ImportVariant::Json(json_value) => CStringHolder::try_from(json_value),
             ImportVariant::Pem(pem_data) => CStringHolder::try_from(pem_data),
+        }
+    }
+}
+
+// ==========================================================================
+// Seal Data
+// ==========================================================================
+
+/// Variant that holds the actual seal data
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+enum SealVariant<'a> {
+    Size(NonZeroUsize),
+    Data(&'a [u8]),
+}
+
+/// Data to be sealed, either a non-zero size or some explicit data.
+///
+/// Instances of this struct may be used with the [`FapiContext::create_seal()`](crate::FapiContext::create_seal) function.
+#[derive(Clone, Copy, Debug)]
+pub struct SealData<'a>(SealVariant<'a>);
+
+impl<'a> SealData<'a> {
+    /// Creates a new `SealData` with the specified non-zero size.
+    ///
+    /// The new sealed object will be created with the specified size and will be initialized by the TPM with random data.
+    pub fn from_size(size: NonZeroUsize) -> Self {
+        Self(SealVariant::Size(size))
+    }
+
+    /// Creates a new `SealData` containing the specified data.
+    ///
+    /// The new sealed object will be created with a size of `data.len()` and it will be initialized with the given data.
+    pub fn from_data(data: &'a [u8]) -> Result<Self, ErrorCode> {
+        if !data.is_empty() { Ok(Self(SealVariant::Data(data))) } else { Err(ERR_INVALID_ARGUMENTS) }
+    }
+
+    /// Returns the actual seal size and the associated data (if any)
+    pub(crate) fn into_raw_data(self) -> Result<(NonZeroUsize, CBinaryHolder), ErrorCode> {
+        match self.0 {
+            SealVariant::Size(size) => Ok((size, CBinaryHolder::empty())),
+            SealVariant::Data(data) => {
+                let cstr_data = CBinaryHolder::try_from(data)?;
+                Ok((NonZeroUsize::new(cstr_data.len()).expect("Size must not be zero!"), cstr_data))
+            }
         }
     }
 }

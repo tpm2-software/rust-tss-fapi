@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.12.0] - 2026-01-22
+
+### Changed
+
+- Improved `FapiContext::create_seal()` to accept either a non-empty `&[u8]` slice or a `NonZeroUsize` value.
+- Various improvements to internal memory handling.
+
 ## [0.11.0] - 2026-01-21
 
 ### Changed

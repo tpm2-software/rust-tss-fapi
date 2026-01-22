@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-//! [![Rust](https://img.shields.io/badge/rust-1.82.0+-orchid?logo=rust)](https://www.rust-lang.org/)
+//! [![Rust](https://img.shields.io/badge/rust-1.85.0+-orchid?logo=rust)](https://www.rust-lang.org/)
 //! [![Crates.io](https://img.shields.io/crates/v/tss2-fapi-rs.svg)](https://crates.io/crates/tss2-fapi-rs)
 //! [![Docs.rs](https://img.shields.io/docsrs/tss2-fapi-rs.svg)](https://docs.rs/tss2-fapi-rs/latest/tss2_fapi_rs/)
 //! [![License](https://img.shields.io/crates/l/tss2-fapi-rs)](https://opensource.org/licenses/BSD-3-Clause)
@@ -88,7 +88,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.11.0"
+//! tss2-fapi-rs = "0.12.0"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!
@@ -443,7 +443,7 @@ pub use callback::{AuthCbParam, BranchCbParam, Callbacks, FapiCallbacks, PolicyA
 pub use context::FapiContext;
 pub use error::{BaseErrorCode, ErrorCode, InternalError, Tpm2ErrFmt0, Tpm2ErrFmt1, Tpm2ErrorCode, Tpm2Warning};
 pub use flags::{BlobType, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, SealFlags};
-pub use types::{ImportData, QuoteResult, SignResult, TpmBlobs};
+pub use types::{ImportData, QuoteResult, SealData, SignResult, TpmBlobs};
 pub use version::{FapiVersion, VersionInfo, get_version};
 
 // Re-export JSON module

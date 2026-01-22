@@ -7,23 +7,24 @@
 use std::{ffi::c_char, fmt::Display, num::NonZeroUsize, os::raw::c_void, ptr, sync::RwLock};
 
 use crate::{
-    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealFlags,
-    SignResult, TpmBlobs,
+    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealData,
+    SealFlags, SignResult, TpmBlobs,
     callback::{CallbackManager, entry_point},
     fapi_sys::{self, FAPI_CONTEXT, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
     flags::Flags,
     json::{self, JsonValue},
     locking::LockGuard,
     marshal::u64_from_be,
-    memory::{CStringHolder, FapiMemoryHolder, cond_out, cond_ptr, opt_to_len, opt_to_ptr},
+    memory::{CBinaryHolder, CStringHolder, FapiMemoryHolder, cond_out, cond_ptr},
 };
 
 /* Const */
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::NoResultData);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 
-/* Opaque type  */
-type TctiOpaqueContextBlob = *mut [u8; 0];
+/* Opaque ContextBlob type  */
+#[derive(Debug)]
+pub struct TctiOpaqueContextBlob(pub *mut c_void);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///
@@ -402,8 +403,9 @@ impl FapiContext {
     pub fn nv_write(&mut self, nv_path: &str, data: &[u8]) -> Result<(), ErrorCode> {
         fail_if_empty!(data);
         let cstr_path = CStringHolder::try_from(nv_path)?;
+        let cstr_data = CBinaryHolder::try_from(data)?;
 
-        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvWrite(context, cstr_path.as_ptr(), data.as_ptr(), data.len()) })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvWrite(context, cstr_path.as_ptr(), cstr_data.as_ptr(), cstr_data.len()) })
     }
 
     /// Convenience function to [`nv_write()`](FapiContext::nv_write) an **`u64`** value. Assumes "big endian" byte order.
@@ -439,8 +441,11 @@ impl FapiContext {
 
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_logs = CStringHolder::try_from(log_data)?;
+        let cstr_data = CBinaryHolder::try_from(data)?;
 
-        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_NvExtend(context, cstr_path.as_ptr(), data.as_ptr(), data.len(), cstr_logs.as_ptr()) })
+        self.fapi_call(false, |context| unsafe {
+            fapi_sys::Fapi_NvExtend(context, cstr_path.as_ptr(), cstr_data.as_ptr(), cstr_data.len(), cstr_logs.as_ptr())
+        })
     }
 
     /// Write the policyDigest of a policy to an NV index so it can be used in policies containing PolicyAuthorizeNV elements.
@@ -463,9 +468,10 @@ impl FapiContext {
     pub fn pcr_extend(&mut self, pcr_no: u32, data: &[u8], log_data: Option<&str>) -> Result<(), ErrorCode> {
         fail_if_empty!(data);
 
+        let cstr_data = CBinaryHolder::try_from(data)?;
         let cstr_logs = CStringHolder::try_from(log_data)?;
 
-        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_PcrExtend(context, pcr_no, data.as_ptr(), data.len(), cstr_logs.as_ptr()) })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_PcrExtend(context, pcr_no, cstr_data.as_ptr(), cstr_data.len(), cstr_logs.as_ptr()) })
     }
 
     /// Reads from a given PCR and returns the value and the event log.
@@ -508,6 +514,7 @@ impl FapiContext {
 
         let cstr_path = CStringHolder::try_from(key_path)?;
         let cstr_type = CStringHolder::try_from(Flags::as_string(quote_type)?)?;
+        let cstr_qual = CBinaryHolder::try_from(qualifying_data)?;
 
         let mut quote_info: *mut c_char = ptr::null_mut();
         let mut signature_data: *mut u8 = ptr::null_mut();
@@ -522,8 +529,8 @@ impl FapiContext {
                 pcr_no.len(),
                 cstr_path.as_ptr(),
                 cstr_type.as_ptr(),
-                opt_to_ptr(qualifying_data),
-                opt_to_len(qualifying_data),
+                cstr_qual.as_ptr(),
+                cstr_qual.len(),
                 &mut quote_info,
                 &mut signature_data,
                 &mut signature_size,
@@ -557,16 +564,18 @@ impl FapiContext {
         let cstr_path = CStringHolder::try_from(key_path)?;
         let cstr_info = CStringHolder::try_from(quote_info)?;
         let cstr_logs = CStringHolder::try_from(prc_log)?;
+        let cstr_qual = CBinaryHolder::try_from(qualifying_data)?;
+        let cstr_sign = CBinaryHolder::try_from(signature)?;
 
         self.fapi_call(false, |context| unsafe {
             fapi_sys::Fapi_VerifyQuote(
                 context,
                 cstr_path.as_ptr(),
-                opt_to_ptr(qualifying_data),
-                opt_to_len(qualifying_data),
+                cstr_qual.as_ptr(),
+                cstr_qual.len(),
                 cstr_info.as_ptr(),
-                signature.as_ptr(),
-                signature.len(),
+                cstr_sign.as_ptr(),
+                cstr_sign.len(),
                 cstr_logs.as_ptr(),
             )
         })
@@ -589,12 +598,13 @@ impl FapiContext {
         fail_if_empty!(plaintext);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
+        let cstr_plaintext = CBinaryHolder::try_from(plaintext)?;
 
         let mut ciphertext_data: *mut u8 = ptr::null_mut();
         let mut ciphertext_size: usize = 0;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Encrypt(context, cstr_path.as_ptr(), plaintext.as_ptr(), plaintext.len(), &mut ciphertext_data, &mut ciphertext_size)
+            fapi_sys::Fapi_Encrypt(context, cstr_path.as_ptr(), cstr_plaintext.as_ptr(), cstr_plaintext.len(), &mut ciphertext_data, &mut ciphertext_size)
         })
         .and_then(|_| FapiMemoryHolder::from_raw(ciphertext_data, ciphertext_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
@@ -606,12 +616,13 @@ impl FapiContext {
         fail_if_empty!(ciphertext);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
+        let cstr_ciphertext = CBinaryHolder::try_from(ciphertext)?;
 
         let mut plaintext_data: *mut u8 = ptr::null_mut();
         let mut plaintext_size: usize = 0;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_Decrypt(context, cstr_path.as_ptr(), ciphertext.as_ptr(), ciphertext.len(), &mut plaintext_data, &mut plaintext_size)
+            fapi_sys::Fapi_Decrypt(context, cstr_path.as_ptr(), cstr_ciphertext.as_ptr(), cstr_ciphertext.len(), &mut plaintext_data, &mut plaintext_size)
         })
         .and_then(|_| FapiMemoryHolder::from_raw(plaintext_data, plaintext_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
     }
@@ -639,6 +650,7 @@ impl FapiContext {
 
         let cstr_path = CStringHolder::try_from(key_path)?;
         let cstr_algo = CStringHolder::try_from(Flags::as_string(pad_algo)?)?;
+        let cstr_hash = CBinaryHolder::try_from(digest)?;
 
         let mut signature_data: *mut u8 = ptr::null_mut();
         let mut signature_size: usize = 0;
@@ -650,8 +662,8 @@ impl FapiContext {
                 context,
                 cstr_path.as_ptr(),
                 cstr_algo.as_ptr(),
-                digest.as_ptr(),
-                digest.len(),
+                cstr_hash.as_ptr(),
+                cstr_hash.len(),
                 &mut signature_data,
                 &mut signature_size,
                 cond_out(&mut public_key_pem, get_pubkey),
@@ -673,9 +685,11 @@ impl FapiContext {
         fail_if_empty!(digest, signature);
 
         let cstr_path = CStringHolder::try_from(key_path)?;
+        let cstr_hash = CBinaryHolder::try_from(digest)?;
+        let cstr_sign = CBinaryHolder::try_from(signature)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_VerifySignature(context, cstr_path.as_ptr(), digest.as_ptr(), digest.len(), signature.as_ptr(), signature.len())
+            fapi_sys::Fapi_VerifySignature(context, cstr_path.as_ptr(), cstr_hash.as_ptr(), cstr_hash.len(), cstr_sign.as_ptr(), cstr_sign.len())
         })
         .map(|_| true)
         .or_else(|error| match error {
@@ -689,25 +703,28 @@ impl FapiContext {
     // [ Sealing functions ]
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    /// Creates a sealed object and stores it in the FAPI metadata store. If no data is provided, the TPM generates random data to fill the sealed object.
+    /// Creates a sealed object and stores it in the FAPI metadata store.
+    ///
+    /// The [`data`](crate::SealData) to be sealed can be given as a *non-empty* `&[u8]` slice. Alternatively, a [`NoneZeroUsize`](std::num::NonZeroUsize) size can be specified.
+    ///
+    /// If **no** explicit data is provided (i.e., only the size), the TPM generates random data to fill the sealed object.
     ///
     /// *See also:* [`Fapi_CreateSeal()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___create_seal.html)
     pub fn create_seal(
         &mut self,
         path: &str,
         seal_type: Option<&[SealFlags]>,
-        seal_size: NonZeroUsize,
         pol_path: Option<&str>,
         auth_val: Option<&str>,
-        data: Option<&[u8]>,
+        data: SealData,
     ) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(seal_type);
-        fail_if_opt_empty!(data);
 
         let cstr_path = CStringHolder::try_from(path)?;
         let cstr_type = CStringHolder::try_from(Flags::as_string(seal_type)?)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
+        let (seal_size, seal_data) = data.into_raw_data()?;
 
         self.fapi_call(false, |context| unsafe {
             fapi_sys::Fapi_CreateSeal(
@@ -717,7 +734,7 @@ impl FapiContext {
                 seal_size.get(),
                 cstr_poli.as_ptr(),
                 cstr_auth.as_ptr(),
-                opt_to_ptr(data),
+                seal_data.as_ptr(),
             )
         })
     }
@@ -827,8 +844,9 @@ impl FapiContext {
     pub fn set_app_data(&mut self, path: &str, app_data: Option<&[u8]>) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(app_data);
         let cstr_path = CStringHolder::try_from(path)?;
+        let cstr_data = CBinaryHolder::try_from(app_data)?;
 
-        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAppData(context, cstr_path.as_ptr(), opt_to_ptr(app_data), opt_to_len(app_data)) })
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_SetAppData(context, cstr_path.as_ptr(), cstr_data.as_ptr(), cstr_data.len()) })
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -879,9 +897,10 @@ impl FapiContext {
 
         let cstr_path_pol = CStringHolder::try_from(pol_path)?;
         let cstr_path_key = CStringHolder::try_from(key_path)?;
+        let cstr_ref_data = CBinaryHolder::try_from(ref_data)?;
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_AuthorizePolicy(context, cstr_path_pol.as_ptr(), cstr_path_key.as_ptr(), opt_to_ptr(ref_data), opt_to_len(ref_data))
+            fapi_sys::Fapi_AuthorizePolicy(context, cstr_path_pol.as_ptr(), cstr_path_key.as_ptr(), cstr_ref_data.as_ptr(), cstr_ref_data.len())
         })
     }
 
@@ -895,7 +914,7 @@ impl FapiContext {
     pub fn get_tcti(&mut self) -> Result<TctiOpaqueContextBlob, ErrorCode> {
         let mut tcti: *mut fapi_sys::TSS2_TCTI_CONTEXT = ptr::null_mut();
 
-        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) }).map(|_| tcti as TctiOpaqueContextBlob)
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetTcti(context, &mut tcti) }).map(|_| TctiOpaqueContextBlob(tcti as *mut c_void))
     }
 
     /// Returns an array of handles that can be polled on to get notified when data from the TPM or from a disk operation is available.
