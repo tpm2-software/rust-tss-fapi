@@ -9,7 +9,7 @@ on:
       TOOLCHAIN_MAX:
         required: false
         type: string
-        default: "1.92.0"
+        default: "1.93.0"
       OS_VERS_MIN:
         required: false
         type: string
@@ -49,16 +49,21 @@ jobs:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
         rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
-    runs-on: ubuntu-${{ matrix.platform }}
+        architecture: [amd64, arm64]
+    runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+      - run: |
+          pkgconf --path tss2-fapi
+          pkgconf --cflags --libs tss2-fapi
       - run: make check
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -71,16 +76,18 @@ jobs:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
         rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
-    runs-on: ubuntu-${{ matrix.platform }}
+        architecture: [amd64, arm64]
+    runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: |
           cp -vr examples/data ~/my-fapi-config
           make docker.swtpm DETACH=1
@@ -96,21 +103,22 @@ jobs:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
         rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        architecture: [amd64, arm64]
         profile: [RSA2048SHA256, ECCP256SHA256]
-    runs-on: ubuntu-${{ matrix.platform }}
+    runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: |
           make docker.swtpm DETACH=1
           make tests FAPI_RS_TEST_PROF=${{ matrix.profile }}
-          make docker.down
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Docker-based tests
@@ -143,9 +151,10 @@ jobs:
           cache: false
           components: llvm-tools-preview
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: |
           make docker.swtpm DETACH=1
           make codecov RUST_LOG=info TSS2_LOG=all+none
@@ -170,16 +179,18 @@ jobs:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
         rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
-    runs-on: ubuntu-${{ matrix.platform }}
+        architecture: [amd64, arm64]
+    runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: make build
       - run: cp -vf README.md LICENSE target/release/
       - run: |
@@ -188,7 +199,7 @@ jobs:
           "$(pkg-config --print-provides tss2-fapi)" > target/release/BUILD_INFO
       - uses: actions/upload-artifact@v4
         with:
-          name: dist.binary.ubuntu-${{ matrix.platform }}-rust-${{ matrix.rust }}
+          name: dist.ubuntu-${{ matrix.platform }}-${{ matrix.architecture }}.rust-${{ matrix.rust }}
           path: |
             target/release/libtss2_fapi_rs.rlib
             target/release/README.md
@@ -208,9 +219,10 @@ jobs:
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: make docs
       - run: |
           cp -f docs/html/redir.html target/doc/index.html
@@ -232,9 +244,10 @@ jobs:
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: make package
       - uses: actions/upload-artifact@v4
         with:
@@ -277,7 +290,7 @@ jobs:
           path: artifacts
       - working-directory: artifacts
         run: |
-          for variant in dist.binary.*; do pushd -- ${variant}; \
+          for variant in dist.*; do pushd -- ${variant}; \
           tar -czvf ../tss2-fapi-rs-${{ github.ref_name }}-${variant:12}.tar.gz *; \
           popd; done; mv -vf dist.package/*.crate ./; rm -r */
       - uses: Roang-zero1/github-upload-release-artifacts-action@v2
@@ -300,9 +313,10 @@ jobs:
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
-          packages: libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
       - run: make publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

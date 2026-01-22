@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## [0.12.0] - 2026-01-22
 
+### Added
+
+- GitHub Actions: Run the examples and integration tests also on the `aarch64` platform.
+
 ### Changed
 
 - Improved `FapiContext::create_seal()` to accept either a non-empty `&[u8]` slice or a `NonZeroUsize` value.

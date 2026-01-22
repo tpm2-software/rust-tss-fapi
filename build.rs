@@ -4,6 +4,9 @@
  * All rights reserved.
  **********************************************************************************************/
 
+#[cfg(not(target_family = "unix"))]
+compile_error!("Sorry, this project currently only supports the Unix platform.");
+
 use pkg_config::{Config, Error};
 use regex::Regex;
 use std::{
