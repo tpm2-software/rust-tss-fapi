@@ -7,8 +7,8 @@
 use std::{ffi::c_char, fmt::Display, num::NonZeroUsize, os::raw::c_void, ptr, sync::RwLock};
 
 use crate::{
-    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealData,
-    SealFlags, SignResult, TpmBlobs,
+    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealFlags,
+    SealedData, SignResult, TpmBlobs,
     callback::{CallbackManager, entry_point},
     fapi_sys::{self, FAPI_CONTEXT, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
     flags::Flags,
@@ -716,7 +716,7 @@ impl FapiContext {
         seal_type: Option<&[SealFlags]>,
         pol_path: Option<&str>,
         auth_val: Option<&str>,
-        data: SealData,
+        data: SealedData,
     ) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(seal_type);
 

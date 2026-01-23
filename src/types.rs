@@ -34,19 +34,17 @@ macro_rules! opt_check {
 // Import Data
 // ==========================================================================
 
-/// Variant that holds the actual import data
-#[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
-enum ImportVariant<'a> {
-    Pem(&'a str),
-    Json(&'a JsonValue),
-}
-
 /// Data to be imported, either a [`&JsonValue`](json::JsonValue) or a PEM encoded [`&str`](core::primitive::str).
 ///
 /// Instances of this struct may be used with the [`FapiContext::import()`](crate::FapiContext::import) function.
 #[derive(Clone, Copy, Debug)]
-pub struct ImportData<'a>(ImportVariant<'a>);
+#[non_exhaustive]
+pub enum ImportData<'a> {
+    #[non_exhaustive]
+    Pem(&'a str),
+    #[non_exhaustive]
+    Json(&'a JsonValue),
+}
 
 impl<'a> ImportData<'a> {
     /// Attempts to create a new `ImportData` from the given `JsonValue` reference.
@@ -56,7 +54,7 @@ impl<'a> ImportData<'a> {
     /// The JSON data will be validated, by the FAPI, when it is actually used.
     pub fn from_json(json_value: &'a JsonValue) -> Result<Self, ErrorCode> {
         if json_value.is_object() && (!json_value.is_empty()) {
-            Ok(Self(ImportVariant::Json(json_value)))
+            Ok(Self::Json(json_value))
         } else {
             Err(ErrorCode::InternalError(InternalError::InvalidArguments))
         }
@@ -73,7 +71,7 @@ impl<'a> ImportData<'a> {
             || pem_data.starts_with("-----BEGIN RSA PRIVATE KEY-----")
             || pem_data.starts_with("-----BEGIN EC PRIVATE KEY-----")
         {
-            Ok(Self(ImportVariant::Pem(pem_data)))
+            Ok(Self::Pem(pem_data))
         } else {
             Err(ERR_INVALID_ARGUMENTS)
         }
@@ -84,9 +82,9 @@ impl TryFrom<ImportData<'_>> for CStringHolder {
     type Error = ErrorCode;
 
     fn try_from(data: ImportData) -> Result<Self, Self::Error> {
-        match data.0 {
-            ImportVariant::Json(json_value) => CStringHolder::try_from(json_value),
-            ImportVariant::Pem(pem_data) => CStringHolder::try_from(pem_data),
+        match data {
+            ImportData::Json(json_value) => CStringHolder::try_from(json_value),
+            ImportData::Pem(pem_data) => CStringHolder::try_from(pem_data),
         }
     }
 }
@@ -95,43 +93,40 @@ impl TryFrom<ImportData<'_>> for CStringHolder {
 // Seal Data
 // ==========================================================================
 
-/// Variant that holds the actual seal data
-#[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
-enum SealVariant<'a> {
-    Size(NonZeroUsize),
-    Data(&'a [u8]),
-}
-
-/// The size of the sealed object and, optionally, the initial data
+/// The size of the sealed object and, optionally, the initial data.
 pub type RawSealInfo = (NonZeroUsize, CBinaryHolder);
 
 /// Data to be sealed, either a non-zero size or some explicit data.
 ///
 /// Instances of this struct may be used with the [`FapiContext::create_seal()`](crate::FapiContext::create_seal) function.
 #[derive(Clone, Copy, Debug)]
-pub struct SealData<'a>(SealVariant<'a>);
+#[non_exhaustive]
+pub enum SealedData<'a> {
+    #[non_exhaustive]
+    Data(&'a [u8]),
+    Size(NonZeroUsize),
+}
 
-impl<'a> SealData<'a> {
+impl<'a> SealedData<'a> {
     /// Creates a new `SealData` with the specified non-zero size.
     ///
     /// The new sealed object will be created with the specified size and will be initialized by the TPM with random data.
-    pub fn from_size(size: NonZeroUsize) -> Self {
-        Self(SealVariant::Size(size))
+    pub fn from_size(size: usize) -> Result<Self, ErrorCode> {
+        Ok(Self::Size(NonZeroUsize::new(size).ok_or(ERR_INVALID_ARGUMENTS)?))
     }
 
     /// Creates a new `SealData` containing the specified data.
     ///
     /// The new sealed object will be created with a size of `data.len()` and it will be initialized with the given data.
     pub fn from_data(data: &'a [u8]) -> Result<Self, ErrorCode> {
-        if !data.is_empty() { Ok(Self(SealVariant::Data(data))) } else { Err(ERR_INVALID_ARGUMENTS) }
+        if !data.is_empty() { Ok(Self::Data(data)) } else { Err(ERR_INVALID_ARGUMENTS) }
     }
 
     /// Returns the actual seal size and the associated data (if any)
     pub(crate) fn into_raw_data(self) -> Result<RawSealInfo, ErrorCode> {
-        match self.0 {
-            SealVariant::Size(size) => Ok((size, CBinaryHolder::empty())),
-            SealVariant::Data(data) => {
+        match self {
+            Self::Size(size) => Ok((size, CBinaryHolder::empty())),
+            Self::Data(data) => {
                 let cstr_data = CBinaryHolder::try_from(data)?;
                 let cstr_size = NonZeroUsize::new(cstr_data.len()).expect("Size must not be zero!");
                 Ok((cstr_size, cstr_data))

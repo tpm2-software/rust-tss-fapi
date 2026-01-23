@@ -18,8 +18,7 @@ use log::debug;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
-use std::num::NonZeroUsize;
-use tss2_fapi_rs::{FapiContext, SealData, SealFlags};
+use tss2_fapi_rs::{FapiContext, SealFlags, SealedData};
 
 const SEAL_TYPE_FLAGS: &[SealFlags] = &[SealFlags::NoDA];
 
@@ -47,7 +46,7 @@ fn test_create_seal_random() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new seal, if not already created
-        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), None, None, SealData::from_size(NonZeroUsize::new(32usize).unwrap())) {
+        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), None, None, SealedData::from_size(32usize).unwrap()) {
             Ok(_) => debug!("Seal created."),
             Err(error) => panic!("Seal creation has failed: {:?}", error),
         }
@@ -80,7 +79,7 @@ fn test_create_seal_data() {
         let sealed_data: [u8; 32usize] = generate_bytes(&mut rng);
 
         // Create new seal, if not already created
-        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), None, None, SealData::from_data(&sealed_data[..]).unwrap()) {
+        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), None, None, SealedData::from_data(&sealed_data[..]).unwrap()) {
             Ok(_) => debug!("Seal created."),
             Err(error) => panic!("Seal creation has failed: {:?}", error),
         }
@@ -113,7 +112,7 @@ fn test_unseal() {
         let original_data: [u8; 128usize] = generate_bytes(&mut rng);
 
         // Create new seal, if not already created
-        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), None, None, SealData::from_data(&original_data[..]).unwrap()) {
+        match context.create_seal(key_path, Some(SEAL_TYPE_FLAGS), None, None, SealedData::from_data(&original_data[..]).unwrap()) {
             Ok(_) => debug!("Seal created."),
             Err(error) => panic!("Seal creation has failed: {:?}", error),
         }
