@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use rand::{Rng, RngCore};
+use rand::{Rng, RngExt};
 use std::{array, fmt::Debug};
 
 /// Create seed value from index
@@ -23,14 +23,14 @@ where
 }
 
 /// Generate pseudo-random bytes
-pub fn generate_bytes<const N: usize>(rand_gen: &mut impl RngCore) -> [u8; N] {
+pub fn generate_bytes<const N: usize>(rand_gen: &mut impl Rng) -> [u8; N] {
     let mut rand_data = [0u8; N];
     rand_gen.fill_bytes(&mut rand_data);
     rand_data
 }
 
 /// Generate pseudo-random bytes
-pub fn generate_string<const N: usize>(rand_gen: &mut impl RngCore) -> String {
+pub fn generate_string<const N: usize>(rand_gen: &mut impl Rng) -> String {
     const ASCII_PRINTABLE: [char; 94] = [
         '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>',
         '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\',

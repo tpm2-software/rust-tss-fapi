@@ -16,7 +16,7 @@ use common::{
 };
 use function_name::named;
 use log::{debug, trace};
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};

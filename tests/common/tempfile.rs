@@ -4,7 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use rand::RngCore;
+use rand::Rng;
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},

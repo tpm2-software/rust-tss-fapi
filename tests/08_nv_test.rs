@@ -15,7 +15,7 @@ use common::{
 };
 use function_name::named;
 use log::{debug, trace};
-use rand::{RngCore, SeedableRng, rng};
+use rand::{Rng, SeedableRng, rng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use tss2_fapi_rs::{FapiContext, NvFlags};

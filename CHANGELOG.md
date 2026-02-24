@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.12.1] - 2026-02-24
+
+### Changed
+
+- Updated various dependencies to the latest version + fixed build issues with new version of `rand` crate.
+- Docker images used for testing/building have been updated to the latest version.
+
 ## [0.12.0] - 2026-01-22
 
 ### Added

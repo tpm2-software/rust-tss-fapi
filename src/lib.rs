@@ -88,7 +88,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! tss2-fapi-rs = "0.12.0"
+//! tss2-fapi-rs = "0.12.1"
 //! ```
 //!
 //! **Note:** Please also consider the [prerequisites](#prerequisites) that are required to use the `tss2-fapi-rs` library!

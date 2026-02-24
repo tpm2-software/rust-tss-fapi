@@ -4,19 +4,19 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use digest::{Digest, FixedOutputReset};
 use p256::{
     PublicKey as EccPublicKey, SecretKey as EccPrivateKey,
     ecdsa::{Signature as EccSignature, SigningKey as EccSigningKey, signature::RandomizedDigestSigner as EccRandomizedDigestSigner},
     pkcs8::DecodePrivateKey,
 };
-use rand::{RngCore, rng};
+use rand::{Rng, rng};
 use rsa::{
     RsaPrivateKey, RsaPublicKey,
     pkcs8::DecodePublicKey,
     pss::{Signature as RsaSignature, SigningKey as RsaSigningKey},
     signature::{
         RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding,
+        digest::{Digest, FixedOutputReset},
         rand_core::{CryptoRng as LegacyCryptoRng, Error as LegacyRngError, RngCore as LegacyRngCore},
     },
 };
