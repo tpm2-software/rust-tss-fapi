@@ -9,7 +9,7 @@ services:
       context: ./
       dockerfile: tests.Dockerfile
       args:
-        BASE_VERSION: ${BASE_VERSION_TESTS:-r22@sha256:b70b41578344e479ff5071536459d63a1b5614e214586181657bc6db2c38639a}
+        BASE_VERSION: ${BASE_VERSION_TESTS:-r23@sha256:c0d2d619a5cdd43b74d2e2674ff2d28559f794c189e7b53814a086e96ecad14f}
     volumes:
       - ../../../:/var/opt/rust/src:ro
       - log:/var/log/tss2-fapi-rs:rw
