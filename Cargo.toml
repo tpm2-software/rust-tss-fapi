@@ -1,6 +1,6 @@
 [package]
 name = "tss2-fapi-rs"
-version = "0.12.1"
+version = "0.12.2"
 edition = "2024"
 rust-version = "1.85"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
@@ -25,7 +25,7 @@ regex = "1.12.3"
 
 [dev-dependencies]
 const-random = "0.1.18"
-digest = "0.11.0"
+digest = "0.11.1"
 env_logger = "0.11.9"
 function_name = "0.3.0"
 hex = "0.4.3"
