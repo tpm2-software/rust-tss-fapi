@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.12.2] - 2026-03-03
+
+### Changed
+
+- Docker images used for testing/building have been updated to the latest version.
+
+### Fixed
+
+- A bug in [libtpms](https://github.com/stefanberger/libtpms) that caused test case `test_remove_auth()` to fail has been [fixed](https://github.com/stefanberger/libtpms/pull/560) upstream.
+
 ## [0.12.1] - 2026-02-24
 
 ### Changed
