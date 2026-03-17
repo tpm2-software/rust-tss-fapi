@@ -25,7 +25,7 @@ regex = "1.12.3"
 
 [dev-dependencies]
 const-random = "0.1.18"
-digest = "0.11.1"
+digest = "0.11.2"
 env_logger = "0.11.9"
 function_name = "0.3.0"
 hex = "0.4.3"
