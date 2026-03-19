@@ -355,24 +355,30 @@ impl FapiContext {
 
     /// This command creates an NV index in the TPM using a given path and type.
     ///
+    /// If the size of the NV index is specified *implicitly* by the `nvi_type` parameter, then the `nvi_size` parameter **must** be `None`; otherwise, the `nvi_size` parameter **must** be `Some(size)` with a `size` that is greater than zero.
+    ///
     /// *See also:* [`Fapi_CreateNv()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___create_nv.html)
     pub fn create_nv(
         &mut self,
         nv_path: &str,
         nvi_type: Option<&[NvFlags]>,
-        nvi_size: usize,
+        nvi_size: Option<NonZeroUsize>,
         pol_path: Option<&str>,
         auth_val: Option<&str>,
     ) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(nvi_type);
+        if nvi_type.is_some_and(|flags| flags.iter().any(|&flag| matches!(flag, NvFlags::BitField | NvFlags::Counter | NvFlags::PCR))) != nvi_size.is_none() {
+            return Err(ERR_INVALID_ARGUMENTS);
+        }
 
         let cstr_path = CStringHolder::try_from(nv_path)?;
         let cstr_type = CStringHolder::try_from(Flags::as_string(nvi_type)?)?;
         let cstr_poli = CStringHolder::try_from(pol_path)?;
         let cstr_auth = CStringHolder::try_from(auth_val)?;
+        let nvi_bytes = nvi_size.map(NonZeroUsize::get).unwrap_or(0usize);
 
         self.fapi_call(false, |context| unsafe {
-            fapi_sys::Fapi_CreateNv(context, cstr_path.as_ptr(), cstr_type.as_ptr(), nvi_size, cstr_poli.as_ptr(), cstr_auth.as_ptr())
+            fapi_sys::Fapi_CreateNv(context, cstr_path.as_ptr(), cstr_type.as_ptr(), nvi_bytes, cstr_poli.as_ptr(), cstr_auth.as_ptr())
         })
     }
 
@@ -711,7 +717,7 @@ impl FapiContext {
 
     /// Creates a sealed object and stores it in the FAPI metadata store.
     ///
-    /// The [`data`](crate::SealData) to be sealed can be given as a *non-empty* `&[u8]` slice. Alternatively, a [`NoneZeroUsize`](std::num::NonZeroUsize) size can be specified.
+    /// The [`data`](crate::SealedData) to be sealed can be given as a *non-empty* `&[u8]` slice. Alternatively, a [`NoneZeroUsize`](std::num::NonZeroUsize) size can be specified.
     ///
     /// If **no** explicit data is provided (i.e., only the size), the TPM generates random data to fill the sealed object.
     ///

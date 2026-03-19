@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 ### Changed
 
 - Docker images used for testing/building have been updated to the latest version.
+- The parameter validation for the function `create_nv()` has been improved.
 
 ## [0.12.2] - 2026-03-03
 

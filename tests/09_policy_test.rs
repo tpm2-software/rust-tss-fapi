@@ -20,11 +20,11 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
-use std::{fs, path::Path};
+use std::{fs, num::NonZeroUsize, path::Path};
 use tss2_fapi_rs::{FapiCallbacks, FapiContext, ImportData, KeyFlags, json::JsonValue};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
-const POLICY_NV_AUTH_SIZE: usize = 34usize;
+const POLICY_NV_AUTH_SIZE: NonZeroUsize = NonZeroUsize::new(34usize).unwrap();
 
 // ==========================================================================
 // Test cases
@@ -285,7 +285,7 @@ fn test_write_authorize_nv() {
         };
 
         // Create NV index, if not already created
-        match context.create_nv(nv_path, Some(&[tss2_fapi_rs::NvFlags::NoDA]), POLICY_NV_AUTH_SIZE, None, None) {
+        match context.create_nv(nv_path, Some(&[tss2_fapi_rs::NvFlags::NoDA]), Some(POLICY_NV_AUTH_SIZE), None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }

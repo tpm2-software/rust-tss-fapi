@@ -83,7 +83,7 @@ impl Flags for KeyFlags {
 
 /// NV index creation flags, as used by the [`create_nv()`](crate::FapiContext::create_nv) function.
 ///
-/// *Note:* The Flags [`BitField`](NvFlags::BitField), [`Counter`](NvFlags::Counter) and [`PCR`](NvFlags::PCR) are mutually exclusive! If **no** type flag is given, an "ordinary" NV index is created.
+/// *Note:* The type flags [`BitField`](NvFlags::BitField), [`Counter`](NvFlags::Counter) and [`PCR`](NvFlags::PCR) are mutually exclusive! If one of these flags is given, then the size of the NV index is *implicit* defined; otherwise, if **no** type flag is given, an "ordinary" NV index of application-defined size is created.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 #[non_exhaustive]
 pub enum NvFlags {
@@ -114,7 +114,7 @@ impl Flags for NvFlags {
     }
 
     fn validate_set(flags: &BTreeSet<Self>) -> bool {
-        flags.iter().copied().filter(|flag| matches!(*flag, Self::BitField | Self::Counter | Self::PCR)).count() < 2usize
+        flags.iter().copied().filter(|&flag| matches!(flag, Self::BitField | Self::Counter | Self::PCR)).count() < 2usize
     }
 }
 

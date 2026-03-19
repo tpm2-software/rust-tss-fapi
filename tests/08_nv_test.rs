@@ -6,6 +6,8 @@
 
 pub mod common;
 
+use std::num::NonZeroUsize;
+
 use common::{
     callback::MyCallbacks,
     param::PASSWORD,
@@ -50,7 +52,7 @@ fn test_nv_write() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
-        match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
+        match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), NonZeroUsize::new(data.len()), None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -96,7 +98,7 @@ fn test_nv_read() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
-        match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), data.len(), None, None) {
+        match context.create_nv(nv_path, Some(NV_ORDINARY_FLAGS), NonZeroUsize::new(data.len()), None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -142,7 +144,7 @@ fn test_nv_counter() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
-        match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), 0usize, None, None) {
+        match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), None, None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -200,7 +202,7 @@ fn test_nv_bitset() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
-        match context.create_nv(nv_path, Some(NV_BITFIELD_FLAGS), 0usize, None, None) {
+        match context.create_nv(nv_path, Some(NV_BITFIELD_FLAGS), None, None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
@@ -275,7 +277,7 @@ fn test_nv_pcr() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create NV index, if not already created
-        match context.create_nv(nv_path, Some(NV_PCR_FLAGS), 0usize, None, None) {
+        match context.create_nv(nv_path, Some(NV_PCR_FLAGS), None, None, None) {
             Ok(_) => debug!("NV index created."),
             Err(error) => panic!("NV index creation has failed: {:?}", error),
         }
