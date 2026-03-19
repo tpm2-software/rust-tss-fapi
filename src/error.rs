@@ -217,6 +217,7 @@ pub enum Tpm2Warning {
 pub enum InternalError {
     NoResultData,
     InvalidArguments,
+    NotImplemented,
 }
 
 impl ErrorCode {

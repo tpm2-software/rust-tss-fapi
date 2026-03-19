@@ -24,6 +24,7 @@ use std::{fs, path::Path};
 use tss2_fapi_rs::{FapiCallbacks, FapiContext, ImportData, KeyFlags, json::JsonValue};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
+const POLICY_NV_AUTH_SIZE: usize = 34usize;
 
 // ==========================================================================
 // Test cases
@@ -44,7 +45,6 @@ fn test_policy_signed_rsa() {
         let mut rng = ChaChaRng::from_seed(create_seed(i));
 
         // Create FAPI context
-
         let mut context = match FapiContext::new() {
             Ok(fpai_ctx) => fpai_ctx,
             Err(error) => panic!("Failed to create context: {:?}", error),
@@ -252,6 +252,49 @@ fn test_policy_action() {
         let actions = callbacks.downcast::<MyCallbacks>().expect("Downcast failed!").get_actions();
         assert!(!actions.is_empty());
         assert!(actions[0].eq_ignore_ascii_case("myaction"));
+    });
+}
+
+/// Test the `write_authorize_nv()` function to write a policy digest to an NV index.
+#[test]
+#[serial]
+#[named]
+fn test_write_authorize_nv() {
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
+
+    repeat_test!(|i| {
+        let nv_path = &format!("nv/Owner/pol_digest{}", i);
+        let pol_name = &format!("/policy/pol_signed_rsa{}", i);
+
+        // Create FAPI context
+        let mut context = match FapiContext::new() {
+            Ok(fpai_ctx) => fpai_ctx,
+            Err(error) => panic!("Failed to create context: {:?}", error),
+        };
+
+        // Read policy from file
+        let policy_json = read_policy(configuration.data_path(), "pol_signed_rsa").expect("Failed to read policy!");
+
+        // Initialize TPM, if not already initialized
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
+
+        // Import policy
+        match context.import(pol_name, ImportData::from_json(&policy_json).unwrap()) {
+            Ok(_) => debug!("Policy imported."),
+            Err(error) => panic!("Failed to import policy: {:?}", error),
+        };
+
+        // Create NV index, if not already created
+        match context.create_nv(nv_path, Some(&[tss2_fapi_rs::NvFlags::NoDA]), POLICY_NV_AUTH_SIZE, None, None) {
+            Ok(_) => debug!("NV index created."),
+            Err(error) => panic!("NV index creation has failed: {:?}", error),
+        }
+
+        // Write the policy digest to NV index
+        match context.write_authorize_nv(nv_path, pol_name) {
+            Ok(_) => debug!("Policy digest has been written to NV index."),
+            Err(error) => panic!("Writing the policy digest failed: {:?}", error),
+        }
     });
 }
 

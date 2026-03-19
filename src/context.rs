@@ -24,7 +24,13 @@ const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError:
 
 /* Opaque ContextBlob type  */
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct TctiOpaqueContextBlob(pub *mut c_void);
+
+/* Opaque ContextBlob type  */
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct FapiPollHandle(pub *mut c_void);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///
@@ -928,8 +934,8 @@ impl FapiContext {
     /// This functions is a stub. Currently, `Fapi_GetPollHandles()` is **not** implemented in the Rust wrapper library!
     ///
     /// </div>
-    pub fn get_poll_handles(&mut self) -> Result<Vec<()>, ErrorCode> {
-        todo!("Not implemented yet.");
+    pub fn get_poll_handles(&mut self) -> Result<Vec<FapiPollHandle>, ErrorCode> {
+        Err(ErrorCode::InternalError(InternalError::NotImplemented))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

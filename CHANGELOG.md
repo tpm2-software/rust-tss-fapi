@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.13.0] - 2026-03-19
+
+### Added
+
+- Test cases for functions `write_authorize_nv` and `get_poll_handles()` have been added.
+- New error code `InternalError::NotImplemented` has been added.
+
+### Changed
+
+- Docker images used for testing/building have been updated to the latest version.
+
 ## [0.12.2] - 2026-03-03
 
 ### Changed
