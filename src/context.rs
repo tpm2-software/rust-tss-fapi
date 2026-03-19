@@ -367,7 +367,7 @@ impl FapiContext {
         auth_val: Option<&str>,
     ) -> Result<(), ErrorCode> {
         fail_if_opt_empty!(nvi_type);
-        if nvi_type.is_some_and(|flags| flags.iter().any(|&flag| matches!(flag, NvFlags::BitField | NvFlags::Counter | NvFlags::PCR))) != nvi_size.is_none() {
+        if NvFlags::implicit_size(&nvi_type) != nvi_size.is_none() {
             return Err(ERR_INVALID_ARGUMENTS);
         }
 

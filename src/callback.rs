@@ -192,23 +192,28 @@ impl<T: Any> AsAny for T {
 /// Applications shall implement this trait as follows:
 ///
 /// ```
+/// use std::borrow::Cow;
+/// use tss2_fapi_rs::{
+///     FapiCallbacks, AuthCbParam, SignCbParam, BranchCbParam, PolicyActionCbParam, CbResult
+/// };
+///
 /// pub struct MyCallbacks;
 ///
 /// impl FapiCallbacks for MyCallbacks {
 ///     fn auth_cb(&mut self, param: AuthCbParam) -> CbResult<Cow<'static, str>> {
-///         /* ... */
+///         todo!()
 ///     }
 ///
 ///     fn sign_cb(&mut self, param: SignCbParam) -> CbResult<Vec<u8>> {
-///         /* ... */
+///         todo!()
 ///     }
 ///
 ///     fn branch_cb(&mut self, param: BranchCbParam) -> CbResult<usize> {
-///         /* ... */
+///         todo!()
 ///     }
 ///
 ///     fn policy_action_cb(&mut self, param: PolicyActionCbParam) -> CbResult<()> {
-///         /* ... */
+///         todo!()
 ///     }
 /// }
 /// ```

@@ -101,6 +101,16 @@ pub enum NvFlags {
     Index(NonZeroU32),
 }
 
+impl NvFlags {
+    fn is_type_flag(&self) -> bool {
+        matches!(*self, Self::BitField | Self::Counter | Self::PCR)
+    }
+
+    pub fn implicit_size(list: &Option<&[Self]>) -> bool {
+        list.is_some_and(|flags| flags.iter().any(Self::is_type_flag))
+    }
+}
+
 impl Flags for NvFlags {
     fn stringify(self) -> Cow<'static, str> {
         match self {
@@ -114,7 +124,7 @@ impl Flags for NvFlags {
     }
 
     fn validate_set(flags: &BTreeSet<Self>) -> bool {
-        flags.iter().copied().filter(|&flag| matches!(flag, Self::BitField | Self::Counter | Self::PCR)).count() < 2usize
+        flags.iter().copied().filter(Self::is_type_flag).count() < 2usize
     }
 }
 
