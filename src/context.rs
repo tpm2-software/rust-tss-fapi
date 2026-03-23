@@ -326,7 +326,7 @@ impl FapiContext {
                 cond_out(&mut policy_string, get_policy),
             )
         })
-        .map(|_| {
+        .and_then(|_| {
             TpmBlobs::from(
                 FapiMemoryHolder::from_raw(blob_pub_data, blob_pub_size).to_vec(),
                 FapiMemoryHolder::from_raw(blob_sec_data, blob_sec_size).to_vec(),
@@ -552,7 +552,7 @@ impl FapiContext {
         })
         .and_then(|_| FapiMemoryHolder::from_str(quote_info).to_json().ok_or(ERR_NO_RESULT_DATA))
         .and_then(|info| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().map(|data| (info, data)).ok_or(ERR_NO_RESULT_DATA))
-        .map(|signature| {
+        .and_then(|signature| {
             QuoteResult::from(signature.0, signature.1, FapiMemoryHolder::from_str(pcr_log).to_json(), FapiMemoryHolder::from_str(certificate).to_string())
         })
     }
@@ -683,7 +683,7 @@ impl FapiContext {
             )
         })
         .and_then(|_| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
-        .map(|signature| {
+        .and_then(|signature| {
             SignResult::from(signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string())
         })
     }

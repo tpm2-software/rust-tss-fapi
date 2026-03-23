@@ -47,6 +47,24 @@ pub enum ImportData<'a> {
 }
 
 impl<'a> ImportData<'a> {
+    /// Attempts to create a new `ImportData` from the given PEM (Privacy-Enhanced Mail) encoded string.
+    ///
+    /// This functions fails if the given string does **not** look like a PEM encoded key, but the PEM key is **not** fully validated.
+    ///
+    /// The PEM data will be validated, by the FAPI, when it is actually used.
+    pub fn from_pem(pem_data: &'a str) -> Result<Self, ErrorCode> {
+        let pem_trimmed = pem_data.trim_ascii_start();
+        if pem_trimmed.starts_with("-----BEGIN PUBLIC KEY-----")
+            || pem_trimmed.starts_with("-----BEGIN PRIVATE KEY-----")
+            || pem_trimmed.starts_with("-----BEGIN RSA PRIVATE KEY-----")
+            || pem_trimmed.starts_with("-----BEGIN EC PRIVATE KEY-----")
+        {
+            Ok(Self::Pem(pem_trimmed))
+        } else {
+            Err(ERR_INVALID_ARGUMENTS)
+        }
+    }
+
     /// Attempts to create a new `ImportData` from the given `JsonValue` reference.
     ///
     /// This functions fails if the given JSON value is *empty*, but the JSON structure is **not** fully validated.
@@ -60,20 +78,19 @@ impl<'a> ImportData<'a> {
         }
     }
 
-    /// Attempts to create a new `ImportData` from the given PEM (Privacy-Enhanced Mail) encoded string.
-    ///
-    /// This functions fails if the given string does **not** look like a PEM encoded key, but the PEM key is **not** fully validated.
-    ///
-    /// The PEM data will be validated, by the FAPI, when it is actually used.
-    pub fn from_pem(pem_data: &'a str) -> Result<Self, ErrorCode> {
-        if pem_data.starts_with("-----BEGIN PUBLIC KEY-----")
-            || pem_data.starts_with("-----BEGIN PRIVATE KEY-----")
-            || pem_data.starts_with("-----BEGIN RSA PRIVATE KEY-----")
-            || pem_data.starts_with("-----BEGIN EC PRIVATE KEY-----")
-        {
-            Ok(Self::Pem(pem_data))
-        } else {
-            Err(ERR_INVALID_ARGUMENTS)
+    /// Returns the content of this `ImportData` as a PEM (Privacy-Enhanced Mail) encoded string, if applicable; otherwise `None`.
+    pub fn as_pem(&self) -> Option<&str> {
+        match self {
+            Self::Pem(pem_data) => Some(pem_data),
+            _ => None,
+        }
+    }
+
+    /// Returns the content of this `ImportData` as a `JsonValue` reference, if applicable; otherwise `None`.
+    pub fn as_json(&self) -> Option<&JsonValue> {
+        match self {
+            Self::Json(json_value) => Some(json_value),
+            _ => None,
         }
     }
 }
@@ -104,6 +121,7 @@ pub type RawSealInfo = (NonZeroUsize, CBinaryHolder);
 pub enum SealedData<'a> {
     #[non_exhaustive]
     Data(&'a [u8]),
+    #[non_exhaustive]
     Size(NonZeroUsize),
 }
 
@@ -133,6 +151,22 @@ impl<'a> SealedData<'a> {
             }
         }
     }
+
+    /// Returns the "raw" data contained in this `SealedData`, if applicable; otherwise `None`.
+    pub fn as_data(&self) -> Option<&[u8]> {
+        match self {
+            Self::Data(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    /// Returns the size value contained in this `SealedData`, if applicable; otherwise `None`.
+    pub fn as_size(&self) -> Option<NonZeroUsize> {
+        match self {
+            Self::Size(size) => Some(*size),
+            _ => None,
+        }
+    }
 }
 
 // ==========================================================================
@@ -150,14 +184,17 @@ pub struct SignResult {
 }
 
 impl SignResult {
-    pub fn from(sign_value: Vec<u8>, public_key: Option<String>, certificate: Option<String>) -> Self {
-        assert!(not_empty!(sign_value) && opt_check!(public_key) && opt_check!(certificate), "A required value is missing!");
-        Self { sign_value, public_key, certificate }
+    pub fn from(sign_value: Vec<u8>, public_key: Option<String>, certificate: Option<String>) -> Result<Self, ErrorCode> {
+        if not_empty!(sign_value) && opt_check!(public_key) && opt_check!(certificate) {
+            Ok(Self { sign_value, public_key, certificate })
+        } else {
+            Err(ERR_INVALID_ARGUMENTS)
+        }
     }
 }
 
 // ==========================================================================
-// Quoate Result
+// Quote Result
 // ==========================================================================
 
 /// Contains the result of a cryptographic quoting operation.
@@ -172,9 +209,12 @@ pub struct QuoteResult {
 }
 
 impl QuoteResult {
-    pub fn from(quote_info: JsonValue, signature: Vec<u8>, prc_log: Option<JsonValue>, certificate: Option<String>) -> Self {
-        assert!(not_empty!(quote_info) && not_empty!(signature) && opt_check!(prc_log) && opt_check!(certificate), "A required value is missing!");
-        Self { quote_info, signature, prc_log, certificate }
+    pub fn from(quote_info: JsonValue, signature: Vec<u8>, prc_log: Option<JsonValue>, certificate: Option<String>) -> Result<Self, ErrorCode> {
+        if not_empty!(quote_info) && not_empty!(signature) && opt_check!(prc_log) && opt_check!(certificate) {
+            Ok(Self { quote_info, signature, prc_log, certificate })
+        } else {
+            Err(ERR_INVALID_ARGUMENTS)
+        }
     }
 }
 
@@ -193,8 +233,72 @@ pub struct TpmBlobs {
 }
 
 impl TpmBlobs {
-    pub fn from(public_key: Option<Vec<u8>>, private_key: Option<Vec<u8>>, policy: Option<JsonValue>) -> Self {
-        assert!(opt_check!(public_key) && opt_check!(private_key) && opt_check!(policy), "A required value is missing!");
-        Self { public_key, private_key, policy }
+    pub fn from(public_key: Option<Vec<u8>>, private_key: Option<Vec<u8>>, policy: Option<JsonValue>) -> Result<Self, ErrorCode> {
+        if opt_check!(public_key) && opt_check!(private_key) && opt_check!(policy) {
+            Ok(Self { public_key, private_key, policy })
+        } else {
+            Err(ERR_INVALID_ARGUMENTS)
+        }
+    }
+}
+
+// ==========================================================================
+// Unit tests
+// ==========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::{ImportData, SealedData};
+    use json::JsonValue;
+    use std::sync::LazyLock;
+
+    #[test]
+    fn test_import_pem() {
+        for &id in &["PUBLIC KEY", "PRIVATE KEY", "RSA PRIVATE KEY", "EC PRIVATE KEY"] {
+            let pem_data = format!("-----BEGIN {id}-----\nMAAA");
+            let import_data = ImportData::from_pem(&pem_data).unwrap();
+            assert_eq!(import_data.as_json(), None);
+            assert_eq!(import_data.as_pem().unwrap(), pem_data);
+        }
+    }
+
+    #[test]
+    fn test_import_json() {
+        static JSON_VALUE: LazyLock<JsonValue> = LazyLock::new(|| {
+            let mut json_value = JsonValue::new_object();
+            json_value.insert("foo", JsonValue::String("bar".to_owned())).unwrap();
+            json_value
+        });
+
+        let import_data = ImportData::from_json(&JSON_VALUE).unwrap();
+        assert_eq!(import_data.as_pem(), None);
+        assert_eq!(import_data.as_json().unwrap(), &*JSON_VALUE);
+    }
+
+    #[test]
+    fn test_import_invalid() {
+        assert!(ImportData::from_pem("thingamabob").is_err());
+        assert!(ImportData::from_json(&JsonValue::new_object()).is_err());
+    }
+
+    #[test]
+    fn test_sealed_size() {
+        let sealed_data = SealedData::from_size(42usize).unwrap();
+        assert_eq!(sealed_data.as_data(), None);
+        assert_eq!(sealed_data.as_size().unwrap().get(), 42usize);
+    }
+
+    #[test]
+    fn test_sealed_data() {
+        const SEALED_DATA: &[u8] = b"thingamabob";
+        let sealed_data = SealedData::from_data(SEALED_DATA).unwrap();
+        assert_eq!(sealed_data.as_size(), None);
+        assert_eq!(sealed_data.as_data().unwrap(), SEALED_DATA);
+    }
+
+    #[test]
+    fn test_sealed_invalid() {
+        assert!(SealedData::from_size(0usize).is_err());
+        assert!(SealedData::from_data(b"").is_err());
     }
 }
