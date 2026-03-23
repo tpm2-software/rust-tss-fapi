@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+
+## [0.13.1] - 2026-03-23
+
+### Added
+
+- Added new accessor functions to the `ImportData` and `SealedData` data types.
+
 ## [0.13.0] - 2026-03-19
 
 ### Added
