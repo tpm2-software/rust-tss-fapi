@@ -32,6 +32,7 @@ cargo doc:
   artifacts:
     paths:
       - "target/doc"
+    expire_in: 1 week
 
 cargo build:
   stage: build
@@ -48,3 +49,4 @@ cargo build:
   artifacts:
     paths:
       - "target/release/*.rlib"
+    expire_in: 1 week
