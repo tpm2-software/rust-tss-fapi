@@ -19,7 +19,7 @@ use crate::{
 };
 
 /* Const */
-const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::NoResultData);
+const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 
 /* Opaque ContextBlob type  */
