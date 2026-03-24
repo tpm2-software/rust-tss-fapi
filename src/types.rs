@@ -13,6 +13,7 @@ use std::num::NonZeroUsize;
 
 /* Const */
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
+const ERR_INCOMPLETE_RESULT: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
 
 // ==========================================================================
 // Helper macros
@@ -188,7 +189,7 @@ impl SignResult {
         if not_empty!(sign_value) && opt_check!(public_key) && opt_check!(certificate) {
             Ok(Self { sign_value, public_key, certificate })
         } else {
-            Err(ERR_INVALID_ARGUMENTS)
+            Err(ERR_INCOMPLETE_RESULT)
         }
     }
 }
@@ -213,7 +214,7 @@ impl QuoteResult {
         if not_empty!(quote_info) && not_empty!(signature) && opt_check!(prc_log) && opt_check!(certificate) {
             Ok(Self { quote_info, signature, prc_log, certificate })
         } else {
-            Err(ERR_INVALID_ARGUMENTS)
+            Err(ERR_INCOMPLETE_RESULT)
         }
     }
 }
@@ -237,7 +238,7 @@ impl TpmBlobs {
         if opt_check!(public_key) && opt_check!(private_key) && opt_check!(policy) {
             Ok(Self { public_key, private_key, policy })
         } else {
-            Err(ERR_INVALID_ARGUMENTS)
+            Err(ERR_INCOMPLETE_RESULT)
         }
     }
 }

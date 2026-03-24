@@ -215,7 +215,7 @@ pub enum Tpm2Warning {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 pub enum InternalError {
-    NoResultData,
+    IncompleteResult,
     InvalidArguments,
     NotImplemented,
 }
