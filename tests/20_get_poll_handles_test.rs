@@ -9,7 +9,7 @@ pub mod common;
 use common::{callback::MyCallbacks, param::PASSWORD, setup::TestConfiguration, utils::my_tpm_finalizer};
 use function_name::named;
 use serial_test::serial;
-use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError};
+use tss2_fapi_rs::{ErrorCode, FapiContext, FapiPollHandle, InternalError};
 
 // ==========================================================================
 // Test cases
@@ -33,7 +33,23 @@ fn test_get_poll_handles() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Try to acquire the poll handles (this is expected to fail!)
-        let result = context.get_poll_handles();
+        let result: Result<Vec<FapiPollHandle>, _> = context.get_poll_handles();
         assert!(matches!(result, Err(ErrorCode::InternalError(InternalError::NotImplemented))));
+
+        // Check the handles
+        if let Ok(poll_handles) = result {
+            for handle in poll_handles {
+                check_poll_handle(&handle);
+            }
+        }
     });
+}
+
+// ==========================================================================
+// Helper functions
+// ==========================================================================
+
+#[inline(always)]
+fn check_poll_handle(handle: &FapiPollHandle) {
+    assert!(!handle.0.is_null());
 }

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.13.2] - 2026-04-13
+
+### Added
+
+- Expose return types `TctiOpaqueContextBlob` and `FapiPollHandle` in the public API.
+
+### Changed
+
+- Updated various dependencies to the latest version.
 
 ## [0.13.1] - 2026-03-23
 

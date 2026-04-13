@@ -10,7 +10,7 @@ use common::{callback::MyCallbacks, param::PASSWORD, setup::TestConfiguration, u
 use function_name::named;
 use log::debug;
 use serial_test::serial;
-use tss2_fapi_rs::FapiContext;
+use tss2_fapi_rs::{FapiContext, TctiOpaqueContextBlob};
 
 // ==========================================================================
 // Test cases
@@ -43,6 +43,15 @@ fn test_get_tcti() {
         debug!("TCTI: {:?}", tcti_context);
 
         // Verify
-        assert!(!tcti_context.0.is_null())
+        check_tcti_context(&tcti_context);
     });
+}
+
+// ==========================================================================
+// Helper functions
+// ==========================================================================
+
+#[inline(always)]
+fn check_tcti_context(tcti_context: &TctiOpaqueContextBlob) {
+    assert!(!tcti_context.0.is_null());
 }
