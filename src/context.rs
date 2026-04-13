@@ -7,8 +7,8 @@
 use std::{ffi::c_char, fmt::Display, num::NonZeroUsize, os::raw::c_void, ptr, sync::RwLock};
 
 use crate::{
-    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult, SealFlags,
-    SealedData, SignResult, TpmBlobs,
+    BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, FapiPollHandle, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult,
+    SealFlags, SealedData, SignResult, TctiOpaqueContextBlob, TpmBlobs,
     callback::{CallbackManager, entry_point},
     fapi_sys::{self, FAPI_CONTEXT, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
     flags::Flags,
@@ -21,16 +21,6 @@ use crate::{
 /* Const */
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
-
-/* Opaque ContextBlob type  */
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct TctiOpaqueContextBlob(pub *mut c_void);
-
-/* Opaque ContextBlob type  */
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct FapiPollHandle(pub *mut c_void);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///

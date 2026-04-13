@@ -9,11 +9,21 @@ use crate::{
     json::JsonValue,
     memory::{CBinaryHolder, CStringHolder},
 };
-use std::num::NonZeroUsize;
+use std::{ffi::c_void, num::NonZeroUsize};
 
 /* Const */
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 const ERR_INCOMPLETE_RESULT: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
+
+/* Opaque ContextBlob type  */
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct TctiOpaqueContextBlob(pub *mut c_void);
+
+/* Opaque ContextBlob type  */
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct FapiPollHandle(pub *mut c_void);
 
 // ==========================================================================
 // Helper macros

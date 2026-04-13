@@ -20,7 +20,7 @@ log = "0.4.29"
 
 [build-dependencies]
 bindgen = "0.72.1"
-pkg-config = "0.3.32"
+pkg-config = "0.3.33"
 regex = "1.12.3"
 
 [dev-dependencies]
@@ -31,10 +31,10 @@ function_name = "0.3.0"
 hex = "0.4.3"
 memory-stats = "1.2.0"
 p256 = "0.13.2"
-rand = "0.10.0"
+rand = "0.10.1"
 rand_chacha = "0.10.0"
 regex = "1.12.3"
 rsa = "0.9.10"
 serial_test = "3.4.0"
 sha2 = "0.10.9"
-uuid = "1.22.0"
+uuid = "1.23.0"
