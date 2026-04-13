@@ -254,6 +254,10 @@ where
     pub fn to_vec(&self) -> Option<Vec<T>> {
         if (!self.data_ptr.is_null()) && (self.length > 0usize) { unsafe { Some(slice::from_raw_parts(self.data_ptr, self.length).to_vec()) } } else { None }
     }
+
+    /* pub fn iter(&self) -> Iter<'_, T> {
+        if (!self.data_ptr.is_null()) && (self.length > 0usize) { unsafe { slice::from_raw_parts(self.data_ptr, self.length).iter() } } else { [].iter() }
+    } */
 }
 
 impl FapiMemoryHolder<c_char> {
@@ -309,11 +313,13 @@ where
 // ==========================================================================
 
 /// Create a string from a `c_char` pointer, will be `None` iff the pointer is a `NULL` pointer.
+#[inline]
 pub fn ptr_to_opt_cstr<'a>(str_ptr: *const c_char) -> Option<&'a CStr> {
     if !str_ptr.is_null() { unsafe { Some(CStr::from_ptr(str_ptr)) } } else { None }
 }
 
 /// Create a vector of strings from a "raw" array of `c_char` pointers
+#[inline]
 pub fn ptr_to_cstr_vec<'a>(str_ptr: *const *const c_char, count: usize) -> Vec<&'a CStr> {
     unsafe {
         let list: &[*const c_char] = slice::from_raw_parts(str_ptr, count);
@@ -322,11 +328,13 @@ pub fn ptr_to_cstr_vec<'a>(str_ptr: *const *const c_char, count: usize) -> Vec<&
 }
 
 /// Get conditional pointer, which will be a `NULL` pointer unless the flags is *true*.
+#[inline]
 pub fn cond_ptr<T: Sized + Copy>(cond_ptr: &mut T, enabled: bool) -> *mut T {
     if enabled { cond_ptr } else { ptr::null_mut() }
 }
 
 /// Get conditional output pointer (i.e. pointer to pointer), which will be a `NULL` pointer unless the flags is *true*.
+#[inline]
 pub fn cond_out<T: Sized + Copy>(cond_ptr: &mut *mut T, enabled: bool) -> *mut *mut T {
     if enabled { cond_ptr } else { ptr::null_mut() }
 }
@@ -335,6 +343,7 @@ pub fn cond_out<T: Sized + Copy>(cond_ptr: &mut *mut T, enabled: bool) -> *mut *
 // Utilities
 // ==========================================================================
 
+#[inline]
 fn erase_memory<T>(address: *mut T, length: usize) {
     let ptr = address as *mut u8;
     unsafe {
@@ -345,6 +354,7 @@ fn erase_memory<T>(address: *mut T, length: usize) {
     }
 }
 
+#[inline]
 fn cstring_from_cow(str: Cow<'static, str>) -> Result<CString, NulError> {
     match str {
         Cow::Borrowed(data) => CString::new(data),

@@ -23,7 +23,7 @@ pub struct TctiOpaqueContextBlob(pub *mut c_void);
 /* Opaque ContextBlob type  */
 #[derive(Debug)]
 #[non_exhaustive]
-pub struct FapiPollHandle(pub *mut c_void);
+pub struct FapiPollHandle();
 
 // ==========================================================================
 // Helper macros

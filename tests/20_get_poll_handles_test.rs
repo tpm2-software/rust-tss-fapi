@@ -51,5 +51,5 @@ fn test_get_poll_handles() {
 
 #[inline(always)]
 fn check_poll_handle(handle: &FapiPollHandle) {
-    assert!(!handle.0.is_null());
+    _ = std::hint::black_box(handle);
 }
