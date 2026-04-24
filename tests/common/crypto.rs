@@ -4,20 +4,11 @@
  * All rights reserved.
  **********************************************************************************************/
 
-use digest::{Digest, FixedOutputReset, Update};
 use p256::{
     PublicKey as EccPublicKey, SecretKey as EccPrivateKey,
-    ecdsa::{Signature as EccSignature, SigningKey as EccSigningKey, signature::RandomizedDigestSigner as EccRandomizedDigestSigner},
-    pkcs8::DecodePrivateKey,
+    pkcs8::{DecodePrivateKey, DecodePublicKey},
 };
-use rand::rng;
-use rsa::{
-    RsaPrivateKey, RsaPublicKey,
-    pkcs8::DecodePublicKey,
-    pss::{Signature as RsaSignature, SigningKey as RsaSigningKey},
-    signature::{RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding},
-};
-use sha2::{Sha256, Sha384, Sha512};
+use rsa::{RsaPrivateKey, RsaPublicKey};
 use tss2_fapi_rs::HashAlgorithm;
 
 // ==========================================================================
@@ -88,37 +79,58 @@ pub fn load_private_key(pem_data: &str, key_type: KeyType) -> Option<PrivateKey>
 /// Compute signature using the given private key
 pub fn create_signature(private_key: &PrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
     match private_key {
-        PrivateKey::RsaKey(rsa_key) => create_signature_rsa(rsa_key, hash_algo, message),
-        PrivateKey::EccKey(ecc_key) => create_signature_ecc(ecc_key, hash_algo, message),
+        PrivateKey::RsaKey(rsa_key) => sig_rsa::create_signature(rsa_key, hash_algo, message),
+        PrivateKey::EccKey(ecc_key) => sig_ecc::create_signature(ecc_key, hash_algo, message),
     }
 }
 
 /// Compute signature using the RSA-SSA scheme
-fn create_signature_rsa(private_key: &RsaPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
-    match hash_algo {
-        HashAlgorithm::Sha2_256 => Some(_create_signature_rsa::<Sha256>(private_key, message)),
-        HashAlgorithm::Sha2_384 => Some(_create_signature_rsa::<Sha384>(private_key, message)),
-        HashAlgorithm::Sha2_512 => Some(_create_signature_rsa::<Sha512>(private_key, message)),
-        _ => None,
+mod sig_rsa {
+    use digest::{Digest, FixedOutputReset, Update};
+    use rand::rng;
+    use rsa::{
+        RsaPrivateKey,
+        pss::{Signature as RsaSignature, SigningKey as RsaSigningKey},
+        signature::{RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding},
+    };
+    use sha2::{Sha256, Sha384, Sha512};
+    use tss2_fapi_rs::HashAlgorithm;
+
+    pub fn create_signature(private_key: &RsaPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
+        match hash_algo {
+            HashAlgorithm::Sha2_256 => Some(do_create_signature::<Sha256>(private_key, message)),
+            HashAlgorithm::Sha2_384 => Some(do_create_signature::<Sha384>(private_key, message)),
+            HashAlgorithm::Sha2_512 => Some(do_create_signature::<Sha512>(private_key, message)),
+            _ => None,
+        }
+    }
+
+    fn do_create_signature<D: Digest + FixedOutputReset>(private_key: &RsaPrivateKey, message: &[u8]) -> Vec<u8> {
+        let sign_key = RsaSigningKey::<D>::from(private_key.to_owned());
+        RsaRandomizedDigestSigner::<D, RsaSignature>::sign_digest_with_rng(&sign_key, &mut rng(), |dig| Update::update(dig, message)).to_vec()
     }
 }
 
-/// Compute signature using the RSA-SSA scheme
-fn _create_signature_rsa<D: Digest + FixedOutputReset>(private_key: &RsaPrivateKey, message: &[u8]) -> Vec<u8> {
-    let sign_key = RsaSigningKey::<D>::from(private_key.to_owned());
-    RsaRandomizedDigestSigner::<D, RsaSignature>::sign_digest_with_rng(&sign_key, &mut rng(), |digest| Update::update(digest, message)).to_vec()
-}
-
 /// Compute signature using the ECDSA-scheme on NIST P-256 curve
-fn create_signature_ecc(private_key: &EccPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
-    match hash_algo {
-        HashAlgorithm::Sha2_256 => Some(_create_signature_ecc(private_key, message)),
-        _ => None,
+mod sig_ecc {
+    use digest::Update;
+    use p256::{
+        SecretKey as EccPrivateKey,
+        ecdsa::{Signature as EccSignature, SigningKey as EccSigningKey, signature::RandomizedDigestSigner as EccRandomizedDigestSigner},
+    };
+    use rand::rng;
+    use sha2::Sha256;
+    use tss2_fapi_rs::HashAlgorithm;
+
+    pub fn create_signature(private_key: &EccPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
+        match hash_algo {
+            HashAlgorithm::Sha2_256 => Some(do_create_signature(private_key, message)),
+            _ => None,
+        }
     }
-}
 
-/// Compute signature using the ECDSA-scheme on NIST P-256 curve
-fn _create_signature_ecc(private_key: &EccPrivateKey, message: &[u8]) -> Vec<u8> {
-    let sign_key = EccSigningKey::from(private_key);
-    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut rng(), |digest| Update::update(digest, message)).to_der().to_vec()
+    fn do_create_signature(private_key: &EccPrivateKey, message: &[u8]) -> Vec<u8> {
+        let sign_key = EccSigningKey::from(private_key);
+        EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut rng(), |dig| dig.update(message)).to_der().as_bytes().to_vec()
+    }
 }
