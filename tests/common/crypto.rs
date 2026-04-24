@@ -4,21 +4,18 @@
  * All rights reserved.
  **********************************************************************************************/
 
+use digest::{Digest, FixedOutputReset, Update};
 use p256::{
     PublicKey as EccPublicKey, SecretKey as EccPrivateKey,
     ecdsa::{Signature as EccSignature, SigningKey as EccSigningKey, signature::RandomizedDigestSigner as EccRandomizedDigestSigner},
     pkcs8::DecodePrivateKey,
 };
-use rand::{Rng, rng};
+use rand::rng;
 use rsa::{
     RsaPrivateKey, RsaPublicKey,
     pkcs8::DecodePublicKey,
     pss::{Signature as RsaSignature, SigningKey as RsaSigningKey},
-    signature::{
-        RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding,
-        digest::{Digest, FixedOutputReset},
-        rand_core::{CryptoRng as LegacyCryptoRng, Error as LegacyRngError, RngCore as LegacyRngCore},
-    },
+    signature::{RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding},
 };
 use sha2::{Sha256, Sha384, Sha512};
 use tss2_fapi_rs::HashAlgorithm;
@@ -85,36 +82,6 @@ pub fn load_private_key(pem_data: &str, key_type: KeyType) -> Option<PrivateKey>
 }
 
 // ==========================================================================
-// RNG wrapper for signing
-// ==========================================================================
-
-/// Workaround to implement the `RngCore` and `CryptoRng` traits from the **`rsa::signature::rand_core`** crate.
-///
-/// **TODO:** Remove when `rsa::signature::rand_core` is updated eventually!
-struct LegacyCompatRng;
-
-impl LegacyRngCore for LegacyCompatRng {
-    fn next_u32(&mut self) -> u32 {
-        rng().next_u32()
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        rng().next_u64()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        rng().fill_bytes(dest);
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), LegacyRngError> {
-        self.fill_bytes(dest);
-        Ok(())
-    }
-}
-
-impl LegacyCryptoRng for LegacyCompatRng {}
-
-// ==========================================================================
 // Signature computation
 // ==========================================================================
 
@@ -129,20 +96,17 @@ pub fn create_signature(private_key: &PrivateKey, hash_algo: &HashAlgorithm, mes
 /// Compute signature using the RSA-SSA scheme
 fn create_signature_rsa(private_key: &RsaPrivateKey, hash_algo: &HashAlgorithm, message: &[u8]) -> Option<Vec<u8>> {
     match hash_algo {
-        HashAlgorithm::Sha2_256 => Some(_create_signature_rsa(private_key, Sha256::new_with_prefix(message))),
-        HashAlgorithm::Sha2_384 => Some(_create_signature_rsa(private_key, Sha384::new_with_prefix(message))),
-        HashAlgorithm::Sha2_512 => Some(_create_signature_rsa(private_key, Sha512::new_with_prefix(message))),
+        HashAlgorithm::Sha2_256 => Some(_create_signature_rsa::<Sha256>(private_key, message)),
+        HashAlgorithm::Sha2_384 => Some(_create_signature_rsa::<Sha384>(private_key, message)),
+        HashAlgorithm::Sha2_512 => Some(_create_signature_rsa::<Sha512>(private_key, message)),
         _ => None,
     }
 }
 
 /// Compute signature using the RSA-SSA scheme
-fn _create_signature_rsa<D>(private_key: &RsaPrivateKey, digest: D) -> Vec<u8>
-where
-    D: Digest + FixedOutputReset,
-{
+fn _create_signature_rsa<D: Digest + FixedOutputReset>(private_key: &RsaPrivateKey, message: &[u8]) -> Vec<u8> {
     let sign_key = RsaSigningKey::<D>::from(private_key.to_owned());
-    RsaRandomizedDigestSigner::<D, RsaSignature>::sign_digest_with_rng(&sign_key, &mut LegacyCompatRng, digest).to_vec()
+    RsaRandomizedDigestSigner::<D, RsaSignature>::sign_digest_with_rng(&sign_key, &mut rng(), |digest| Update::update(digest, message)).to_vec()
 }
 
 /// Compute signature using the ECDSA-scheme on NIST P-256 curve
@@ -156,5 +120,5 @@ fn create_signature_ecc(private_key: &EccPrivateKey, hash_algo: &HashAlgorithm, 
 /// Compute signature using the ECDSA-scheme on NIST P-256 curve
 fn _create_signature_ecc(private_key: &EccPrivateKey, message: &[u8]) -> Vec<u8> {
     let sign_key = EccSigningKey::from(private_key);
-    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut LegacyCompatRng, Sha256::new_with_prefix(message)).to_der().to_vec()
+    EccRandomizedDigestSigner::<Sha256, EccSignature>::sign_digest_with_rng(&sign_key, &mut rng(), |digest| Update::update(digest, message)).to_der().to_vec()
 }
