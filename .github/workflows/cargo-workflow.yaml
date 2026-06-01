@@ -9,7 +9,7 @@ on:
       TOOLCHAIN_MAX:
         required: false
         type: string
-        default: "1.95.0"
+        default: "1.96.0"
       OS_VERS_MIN:
         required: false
         type: string
@@ -17,7 +17,7 @@ on:
       OS_VERS_MAX:
         required: false
         type: string
-        default: "24.04"
+        default: "26.04"
     secrets:
       CODECOV_TOKEN:
         required: true
