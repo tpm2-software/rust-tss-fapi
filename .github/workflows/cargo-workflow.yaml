@@ -17,7 +17,7 @@ on:
       OS_VERS_MAX:
         required: false
         type: string
-        default: "26.04"
+        default: "24.04"
     secrets:
       CODECOV_TOKEN:
         required: true
