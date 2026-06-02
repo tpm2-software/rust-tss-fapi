@@ -4,11 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.13.4] - 2026-06-02
+
+### Changed
+
+- GitHub CI/CD: Updated Rust toolchain to version `1.96.0`.
+- Docker images used for testing/building have been updated to the latest versions.
+- Some dependencies have been updated to the latest version.
+
 ## [0.13.3] - 2026-04-24
 
 ### Changed
 
-- GitHub Actions: Updated Rust toolchain to version `1.95.0`.
+- GitHub CI/CD: Updated Rust toolchain to version `1.95.0`.
 - Docker images used for testing/building have been updated to the latest version.
 - Some code clean-up in the "crypto" test code.
 

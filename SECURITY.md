@@ -4,9 +4,10 @@
 
 Currently supported versions:
 
-| Version  | Supported |
-| -------- | --------- |
-| >= 1.0.0 | &#x2705;  |
+| Version               | Supported |
+| --------------------- | --------- |
+| &GreaterEqual; 0.13.0 | &#x2705;  |
+| Older versions        | &#x274C;  |
 
 ## Security Reporting Guidelines
 

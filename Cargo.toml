@@ -1,6 +1,6 @@
 [package]
 name = "tss2-fapi-rs"
-version = "0.13.3"
+version = "0.13.4"
 edition = "2024"
 rust-version = "1.85"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
@@ -16,7 +16,7 @@ full_locking = ["locking"]
 
 [dependencies]
 json = "0.12.4"
-log = "0.4.30"
+log = "0.4.31"
 
 [build-dependencies]
 bindgen = "0.72.1"
