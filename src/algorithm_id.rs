@@ -43,6 +43,21 @@ impl HashAlgorithm {
             _ => Self::UnknownAlgorithm,
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn as_id(&self) -> TPM2_ALG_ID {
+        match self {
+            Self::Sha1 => constants::TPM2_ALG_SHA1,
+            Self::Sha2_256 => constants::TPM2_ALG_SHA256,
+            Self::Sha2_384 => constants::TPM2_ALG_SHA384,
+            Self::Sha2_512 => constants::TPM2_ALG_SHA512,
+            Self::Sha3_256 => constants::TPM2_ALG_SHA3_256,
+            Self::Sha3_384 => constants::TPM2_ALG_SHA3_384,
+            Self::Sha3_512 => constants::TPM2_ALG_SHA3_512,
+            Self::SM3_256 => constants::TPM2_ALG_SM3_256,
+            _ => constants::TPM2_ALG_ERROR,
+        }
+    }
 }
 
 // ==========================================================================
@@ -60,7 +75,10 @@ mod tests {
         for algorithm_id in 0u16..=0xFFFF_u16 {
             match HashAlgorithm::from_id(algorithm_id) {
                 HashAlgorithm::UnknownAlgorithm => (),
-                identifier => assert!(id_set.insert(identifier)),
+                identifier => {
+                    assert_eq!(identifier.as_id(), algorithm_id);
+                    assert!(id_set.insert(identifier));
+                }
             }
         }
         assert_eq!(id_set.len(), 8usize);

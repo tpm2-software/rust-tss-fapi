@@ -65,3 +65,27 @@ impl Display for VersionInfo {
         }
     }
 }
+
+// ==========================================================================
+// Unit tests
+// ==========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::parse_version;
+
+    #[test]
+    fn test_version() {
+        assert_eq!(format!("{}", parse_version("1")), "1.0.0");
+        assert_eq!(format!("{}", parse_version("1.2")), "1.2.0");
+        assert_eq!(format!("{}", parse_version("1.2.3")), "1.2.3");
+
+        assert_eq!(format!("{}", parse_version("9")), "9.0.0");
+        assert_eq!(format!("{}", parse_version("9.8")), "9.8.0");
+        assert_eq!(format!("{}", parse_version("9.8.7")), "9.8.7");
+
+        assert_eq!(format!("{}", parse_version("1.2.3-alpha3")), "1.2.3-alpha3");
+        assert_eq!(format!("{}", parse_version("1.2.3-beta5")), "1.2.3-beta5");
+        assert_eq!(format!("{}", parse_version("1.2.3-rc7")), "1.2.3-rc7");
+    }
+}

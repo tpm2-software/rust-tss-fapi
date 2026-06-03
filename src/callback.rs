@@ -418,8 +418,8 @@ struct CallbackHolder {
 }
 
 impl CallbackHolder {
-    fn new(callbacks: Box<dyn FapiCallbacks>) -> Self {
-        Self { callbacks, temp: Default::default() }
+    fn from(callbacks: impl FapiCallbacks) -> Self {
+        Self { callbacks: Box::new(callbacks), temp: Default::default() }
     }
 }
 
@@ -439,7 +439,8 @@ pub struct CallbackManager(Mutex<CallbackHolder>);
 
 impl CallbackManager {
     pub fn new(callbacks: impl FapiCallbacks) -> Self {
-        Self(Mutex::new(CallbackHolder::new(Box::new(callbacks))))
+        let callback_holder = CallbackHolder::from(callbacks);
+        Self(Mutex::new(callback_holder))
     }
 
     pub fn clear_temp(&self) {
@@ -651,80 +652,209 @@ pub mod entry_point {
 
 #[cfg(test)]
 mod tests {
-    use super::{AuthCbParam, BranchCbParam, CbResult, FapiCallbacks, HashAlgorithm, PolicyActionCbParam, SignCbParam};
-    use std::borrow::Cow;
+    use super::{AuthCbParam, BranchCbParam, CallbackManager, Callbacks, CbResult, FapiCallbacks, HashAlgorithm, PolicyActionCbParam, SignCbParam};
+    use std::{
+        borrow::Cow,
+        ffi::CString,
+        sync::{Arc, Mutex},
+    };
 
-    struct CallbackTest {
-        password_str: &'static str,
-        auth_paths: Vec<String>,
-        sign_paths: Vec<String>,
-        branch_paths: Vec<String>,
-        action_paths: Vec<String>,
+    macro_rules! cstr {
+        ($s:literal) => {
+            &CString::new($s).unwrap()
+        };
     }
 
-    impl CallbackTest {
-        pub fn new(password_str: &'static str) -> Self {
-            Self { password_str, auth_paths: Vec::new(), sign_paths: Vec::new(), branch_paths: Vec::new(), action_paths: Vec::new() }
-        }
-
-        pub fn get_paths(&self) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
-            (self.auth_paths.clone(), self.sign_paths.clone(), self.branch_paths.clone(), self.action_paths.clone())
-        }
+    fn do_invoke_callbacks(cb_manager: &mut CallbackManager) {
+        let _ = cb_manager.auth_cb(cstr!("/HS/SRK/my/auth/path"), Some(cstr!("some object")));
+        let _ = cb_manager.sign_cb(
+            cstr!("/HS/SRK/my/sign/path"),
+            Some(cstr!("some object")),
+            cstr!("key_data"),
+            Some(cstr!("key hint")),
+            HashAlgorithm::Sha2_256.as_id() as u32,
+            b"\x01\x02\x03",
+        );
+        let _ = cb_manager.branch_cb(cstr!("/HS/SRK/my/bran/path"), Some(cstr!("some object")), &[cstr!("first"), cstr!("second")]);
+        let _ = cb_manager.policy_action_cb(cstr!("/HS/SRK/my/actn/path"), Some(cstr!("some action")));
     }
 
-    impl FapiCallbacks for CallbackTest {
-        fn auth_cb(&mut self, param: super::AuthCbParam) -> CbResult<Cow<'static, str>> {
-            self.auth_paths.push(param.object_path.to_owned());
-            Ok(Cow::from(self.password_str))
-        }
-
-        fn sign_cb(&mut self, param: super::SignCbParam) -> CbResult<Vec<u8>> {
-            self.sign_paths.push(param.object_path.to_owned());
-            Ok(b"\x01\x02\x03".to_vec())
-        }
-
-        fn branch_cb(&mut self, param: super::BranchCbParam) -> CbResult<usize> {
-            self.branch_paths.push(param.object_path.to_owned());
-            Ok(1usize)
-        }
-
-        fn policy_action_cb(&mut self, param: super::PolicyActionCbParam) -> CbResult<()> {
-            self.action_paths.push(param.object_path.to_owned());
-            Ok(())
-        }
+    fn assert_paths(paths: &[String], expected: &str) {
+        assert_eq!(paths.iter().filter(|&str| str.eq(expected)).count(), 1usize);
+        assert_eq!(paths.iter().filter(|&str| str.ne(expected)).count(), 0usize);
     }
 
     #[test]
-    fn test_callbacks() {
-        let mut my_callbacks: Box<dyn FapiCallbacks> = Box::new(CallbackTest::new("my_password"));
-        invoke_callbacks(&mut my_callbacks);
+    fn test_fapi_callbacks_1() {
+        struct CallbackTest;
+        impl FapiCallbacks for CallbackTest {}
 
+        let mut cb_manager = CallbackManager::new(CallbackTest);
+        do_invoke_callbacks(&mut cb_manager);
+    }
+
+    #[test]
+    fn test_fapi_callbacks_2() {
+        struct CallbackTest {
+            password_str: &'static str,
+            auth_paths: Vec<String>,
+            sign_paths: Vec<String>,
+            branch_paths: Vec<String>,
+            action_paths: Vec<String>,
+        }
+
+        impl CallbackTest {
+            pub fn new(password_str: &'static str) -> Self {
+                Self { password_str, auth_paths: Vec::new(), sign_paths: Vec::new(), branch_paths: Vec::new(), action_paths: Vec::new() }
+            }
+
+            pub fn get_paths(&self) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
+                (self.auth_paths.clone(), self.sign_paths.clone(), self.branch_paths.clone(), self.action_paths.clone())
+            }
+        }
+
+        impl FapiCallbacks for CallbackTest {
+            fn auth_cb(&mut self, param: super::AuthCbParam) -> CbResult<Cow<'static, str>> {
+                self.auth_paths.push(param.object_path.to_owned());
+                Ok(Cow::from(self.password_str))
+            }
+
+            fn sign_cb(&mut self, param: super::SignCbParam) -> CbResult<Vec<u8>> {
+                self.sign_paths.push(param.object_path.to_owned());
+                Ok(b"\x01\x02\x03".to_vec())
+            }
+
+            fn branch_cb(&mut self, param: super::BranchCbParam) -> CbResult<usize> {
+                self.branch_paths.push(param.object_path.to_owned());
+                Ok(1usize)
+            }
+
+            fn policy_action_cb(&mut self, param: super::PolicyActionCbParam) -> CbResult<()> {
+                self.action_paths.push(param.object_path.to_owned());
+                Ok(())
+            }
+        }
+
+        let mut cb_manager = CallbackManager::new(CallbackTest::new("my_password"));
+        do_invoke_callbacks(&mut cb_manager);
+
+        let my_callbacks = cb_manager.into_inner();
         let downcasted: &CallbackTest = my_callbacks.downcast().expect("Downcast failed!");
         let paths = downcasted.get_paths();
 
-        assert_paths_eq(&paths.0, "/HS/SRK/my/auth/path");
-        assert_paths_eq(&paths.1, "/HS/SRK/my/sign/path");
-        assert_paths_eq(&paths.2, "/HS/SRK/my/bran/path");
-        assert_paths_eq(&paths.3, "/HS/SRK/my/actn/path");
+        assert_paths(&paths.0, "/HS/SRK/my/auth/path");
+        assert_paths(&paths.1, "/HS/SRK/my/sign/path");
+        assert_paths(&paths.2, "/HS/SRK/my/bran/path");
+        assert_paths(&paths.3, "/HS/SRK/my/actn/path");
     }
 
-    fn invoke_callbacks(callbacks: &mut Box<dyn FapiCallbacks>) {
-        let _result = callbacks.auth_cb(AuthCbParam { object_path: "/HS/SRK/my/auth/path", description: Some("some object") });
-        let _result = callbacks.sign_cb(SignCbParam {
-            object_path: "/HS/SRK/my/sign/path",
-            description: Some("some object"),
-            public_key: "key_data",
-            key_hint: Some("key hint"),
-            hash_algo: HashAlgorithm::Sha2_256,
-            challenge: b"\x01\x02\x03",
-        });
-        let _result =
-            callbacks.branch_cb(BranchCbParam { object_path: "/HS/SRK/my/bran/path", description: Some("some object"), branches: vec!["first", "second"] });
-        let _result = callbacks.policy_action_cb(PolicyActionCbParam { object_path: "/HS/SRK/my/actn/path", action: Some("some action") });
+    #[test]
+    fn test_fapi_callbacks_3() {
+        let auth_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let sign_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let bran_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let actn_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+
+        let auth_paths_cloned = Arc::clone(&auth_paths);
+        let auth_fn = move |param: AuthCbParam| {
+            auth_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            Some(Cow::from("my_password"))
+        };
+
+        let sign_paths_cloned = Arc::clone(&sign_paths);
+        let sign_fn = move |param: SignCbParam| {
+            sign_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            Some(b"\x01\x02\x03".to_vec())
+        };
+
+        let bran_paths_cloned = Arc::clone(&bran_paths);
+        let branch_fn = move |param: BranchCbParam| {
+            bran_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            Some(1usize)
+        };
+
+        let actn_paths_cloned = Arc::clone(&actn_paths);
+        let policy_action_fn = move |param: PolicyActionCbParam| {
+            actn_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            true
+        };
+
+        let mut cb_manager = CallbackManager::new(Callbacks::new(auth_fn, sign_fn, branch_fn, policy_action_fn));
+        do_invoke_callbacks(&mut cb_manager);
+        drop(cb_manager);
+
+        let auth_paths = Arc::into_inner(auth_paths).unwrap().into_inner().unwrap();
+        let sign_paths = Arc::into_inner(sign_paths).unwrap().into_inner().unwrap();
+        let bran_paths = Arc::into_inner(bran_paths).unwrap().into_inner().unwrap();
+        let actn_paths = Arc::into_inner(actn_paths).unwrap().into_inner().unwrap();
+
+        assert_paths(&auth_paths[..], "/HS/SRK/my/auth/path");
+        assert_paths(&sign_paths[..], "/HS/SRK/my/sign/path");
+        assert_paths(&bran_paths[..], "/HS/SRK/my/bran/path");
+        assert_paths(&actn_paths[..], "/HS/SRK/my/actn/path");
     }
 
-    fn assert_paths_eq(paths: &[String], expected: &str) {
-        assert_eq!(paths.iter().filter(|&str| str.eq(expected)).count(), 1usize);
-        assert_eq!(paths.iter().filter(|&str| str.ne(expected)).count(), 0usize);
+    #[test]
+    fn test_fapi_callbacks_4a() {
+        let auth_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let auth_paths_cloned = Arc::clone(&auth_paths);
+        let auth_fn = move |param: AuthCbParam| {
+            auth_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            Some(Cow::from("my_password"))
+        };
+
+        let mut cb_manager = CallbackManager::new(Callbacks::with_auth(auth_fn));
+        do_invoke_callbacks(&mut cb_manager);
+        drop(cb_manager);
+        let auth_paths = Arc::into_inner(auth_paths).unwrap().into_inner().unwrap();
+        assert_paths(&auth_paths[..], "/HS/SRK/my/auth/path");
+    }
+
+    #[test]
+    fn test_fapi_callbacks_4b() {
+        let sign_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let sign_paths_cloned = Arc::clone(&sign_paths);
+        let sign_fn = move |param: SignCbParam| {
+            sign_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            Some(b"\x01\x02\x03".to_vec())
+        };
+
+        let mut cb_manager = CallbackManager::new(Callbacks::with_sign(sign_fn));
+        do_invoke_callbacks(&mut cb_manager);
+        drop(cb_manager);
+        let sign_paths = Arc::into_inner(sign_paths).unwrap().into_inner().unwrap();
+        assert_paths(&sign_paths[..], "/HS/SRK/my/sign/path");
+    }
+
+    #[test]
+    fn test_fapi_callbacks_4c() {
+        let bran_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let bran_paths_cloned = Arc::clone(&bran_paths);
+        let branch_fn = move |param: BranchCbParam| {
+            bran_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            Some(1usize)
+        };
+
+        let mut cb_manager = CallbackManager::new(Callbacks::with_branch(branch_fn));
+        do_invoke_callbacks(&mut cb_manager);
+        drop(cb_manager);
+        let bran_paths = Arc::into_inner(bran_paths).unwrap().into_inner().unwrap();
+        assert_paths(&bran_paths[..], "/HS/SRK/my/bran/path");
+    }
+
+    #[test]
+    fn test_fapi_callbacks_4d() {
+        let actn_paths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let actn_paths_cloned = Arc::clone(&actn_paths);
+        let policy_action_fn = move |param: PolicyActionCbParam| {
+            actn_paths_cloned.lock().unwrap().push(param.object_path.to_owned());
+            true
+        };
+
+        let mut cb_manager = CallbackManager::new(Callbacks::with_policy_action(policy_action_fn));
+        do_invoke_callbacks(&mut cb_manager);
+        drop(cb_manager);
+        let actn_paths = Arc::into_inner(actn_paths).unwrap().into_inner().unwrap();
+        assert_paths(&actn_paths[..], "/HS/SRK/my/actn/path");
     }
 }
