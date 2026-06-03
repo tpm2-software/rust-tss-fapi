@@ -246,6 +246,8 @@ where
     T: Sized + Clone,
 {
     /// Creates a new `FapiMemoryHolder` from a "raw" pointer and a length. The pointer can be a `NULL` pointer, in which case the `length` is ignored.
+    ///
+    /// The `length` argument is the number of **elements**, not the number of bytes.
     pub fn from_raw(data_ptr: *mut T, length: usize) -> Self {
         Self { data_ptr, length: if !data_ptr.is_null() { length } else { 0usize } }
     }

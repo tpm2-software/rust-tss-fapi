@@ -10,7 +10,7 @@ use crate::{
     BaseErrorCode, BlobType, ErrorCode, FapiCallbacks, FapiPollHandle, ImportData, InternalError, KeyFlags, NvFlags, PaddingFlags, QuoteFlags, QuoteResult,
     SealFlags, SealedData, SignResult, TctiOpaqueContextBlob, TpmBlobs,
     callback::{CallbackManager, entry_point},
-    fapi_sys::{self, FAPI_CONTEXT, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
+    fapi_sys::{self, FAPI_CONTEXT, FAPI_POLL_HANDLE, TPM2_RC, TSS2_RC, constants::TSS2_RC_SUCCESS},
     flags::Flags,
     json::{self, JsonValue},
     locking::LockGuard,
@@ -881,9 +881,9 @@ impl FapiContext {
     // [ Auth functions ]
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    /// Changes the authorization data of an entity found at key path. The parameter `auth` is a 0-terminated UTF-8 encoded password. If it is longer than the digest size of the entity's nameAlg, it will be hashed according the the TPM specification part 1, rev 138, section 19.6.4.3.
+    /// Changes the authorization data of an entity found at key path. The parameter `auth` is a 0-terminated UTF-8 encoded password. If it is longer than the digest size of the entity's `nameAlg`, it will be hashed according the the TPM specification part 1, rev 138, section 19.6.4.3.
     ///
-    /// If authValue is NULL then thep assword is set to the empty string.
+    /// If `auth` is `NULL` then the password is set to the empty string.
     ///
     /// *See also:* [`Fapi_ChangeAuth()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___change_auth.html)
     pub fn change_auth(&mut self, path: &str, auth: Option<&str>) -> Result<(), ErrorCode> {
@@ -923,15 +923,15 @@ impl FapiContext {
 
     /// Returns an array of handles that can be polled on to get notified when data from the TPM or from a disk operation is available.
     ///
+    /// Poll handles can only be returned while an operation is running; otherwise, the function fails with [`BadSequence`](BaseErrorCode::BadSequence).
+    ///
     /// *See also:* [`Fapi_GetPollHandles()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___get_poll_handles.html)
-    ///
-    /// <div class="warning">
-    ///
-    /// This functions is a stub. Currently, `Fapi_GetPollHandles()` is **not** implemented in the Rust wrapper library!
-    ///
-    /// </div>
     pub fn get_poll_handles(&mut self) -> Result<Vec<FapiPollHandle>, ErrorCode> {
-        Err(ErrorCode::InternalError(InternalError::NotImplemented))
+        let mut handles: *mut FAPI_POLL_HANDLE = ptr::null_mut();
+        let mut count = 0usize;
+
+        self.fapi_call(false, |context| unsafe { fapi_sys::Fapi_GetPollHandles(context, &mut handles, &mut count) })
+            .and_then(|_| FapiMemoryHolder::from_raw(handles, count).to_vec().map(FapiPollHandle::from_iterable).ok_or(ERR_NO_RESULT_DATA))
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -427,7 +427,7 @@
 #![doc(html_no_source)]
 
 #[cfg(not(target_family = "unix"))]
-compile_error!("Sorry, this project currently only supports the Unix platform.");
+compile_error!("Sorry, this project currently only supports the Unix family of platforms.");
 
 mod algorithm_id;
 mod callback;

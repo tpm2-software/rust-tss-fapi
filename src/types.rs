@@ -6,6 +6,7 @@
 
 use crate::{
     ErrorCode, InternalError,
+    fapi_sys::FAPI_POLL_HANDLE,
     json::JsonValue,
     memory::{CBinaryHolder, CStringHolder},
 };
@@ -15,15 +16,10 @@ use std::{ffi::c_void, num::NonZeroUsize};
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
 const ERR_INCOMPLETE_RESULT: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
 
-/* Opaque ContextBlob type  */
+/// Opaque ContextBlob type
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct TctiOpaqueContextBlob(pub *mut c_void);
-
-/* Opaque ContextBlob type  */
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct FapiPollHandle();
 
 // ==========================================================================
 // Helper macros
@@ -250,6 +246,23 @@ impl TpmBlobs {
         } else {
             Err(ERR_INCOMPLETE_RESULT)
         }
+    }
+}
+
+// ==========================================================================
+// Poll Handle
+// ==========================================================================
+
+/// Platform-specific FapiPollHandle wrapper type */
+#[non_exhaustive]
+pub struct FapiPollHandle(pub FAPI_POLL_HANDLE);
+
+impl FapiPollHandle {
+    pub(crate) fn from_iterable<T>(handles: T) -> Vec<Self>
+    where
+        T: IntoIterator<Item = FAPI_POLL_HANDLE>,
+    {
+        handles.into_iter().map(FapiPollHandle).collect()
     }
 }
 

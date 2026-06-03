@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.14.0] - unreleased
+
+### Added
+
+- The stub function `get_poll_handles()` has been repleaced with a proper implementation.
+
+### Changed
+
+- The `FapiPollHandle` type is now a wrapper for the platform-specific `fapi_sys::FAPI_POLL_HANDLE` type.
+
 ## [0.13.4] - 2026-06-02
 
 ### Changed
