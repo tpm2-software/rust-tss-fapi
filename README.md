@@ -7,7 +7,7 @@
 
 # TSS 2.0 FAPI Rust Wrapper
 
-The **`tss2-fapi-rs`** Rust crate provides an interface to the [**TSS2.0 Feature API (FAPI)**](https://tpm2-tss.readthedocs.io/en/latest/group__fapi.html).
+The **`tss2-fapi-rs`** Rust crate provides an interface to the [**TSS2.0 Feature API (FAPI)**](https://github.com/tpm2-software/tpm2-tss#overview).
 
 *Architectural overview:*  
 ![tss2-fapi-rs Overview](docs/images/tss2-fapi-rs.svg)
@@ -38,11 +38,17 @@ tss2-fapi-rs
 
 ## Documentation
 
-The documentation for **`tss2-fapi-rs`** is created with [`rustdoc`](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html) and can be viewed online at:
+The **`tss2-fapi-rs`** documentation is created with [rustdoc](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html) and can be viewed online at:
 
-* **<https://tpm2-software.github.io/rust-tss-fapi/tss2_fapi_rs/>**
+* <https://tpm2-software.github.io/rust-tss-fapi/tss2_fapi_rs/>
+* <https://docs.rs/tss2-fapi-rs/latest/>
 
-* **<https://docs.rs/tss2-fapi-rs/latest/>**
+## Resources
+
+The official Feature API (FAPI) specification, published by the Trusted Computing Group (TCG), is available at:
+
+* [Feature API (FAPI) Specification](https://trustedcomputinggroup.org/wp-content/uploads/TSS_FAPI_v0p94_r09_pub.pdf)
+* [TSS 2.0 JSON Data Types and Policy Language Specification](https://trustedcomputinggroup.org/wp-content/uploads/TSS_JSON_Policy_v0p7_r08_pub.pdf)
 
 ## Disclaimer
 

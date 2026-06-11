@@ -34,8 +34,7 @@ const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError:
 ///
 /// Most functions provided by `FapiContext` are direct equivalents of the underlying FAPI library functions.
 ///
-/// For details, please refer to the TCG Feature API specification:  
-/// <https://trustedcomputinggroup.org/wp-content/uploads/TSS_FAPI_v0p94_r09_pub.pdf>
+/// For details, please refer to the [TCG Feature API (FAPI) Specification](crate#resources).
 ///
 /// ### Optional Parameters
 ///
@@ -250,7 +249,9 @@ impl FapiContext {
 
     /// Imports a JSON encoded policy, policy template or key and stores it at the given path.
     ///
-    /// The [`data`](crate::ImportData) to be imported can be a [`JsonValue`](json::JsonValue), e.g., a JSON encoded policy, or a string containing a PEM encoded key.
+    /// The [`data`](crate::ImportData) to be imported can be a [`JsonValue`](::json::JsonValue), e.g., a JSON encoded policy, or a string containing a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded key.
+    ///
+    /// Please refer to the [TSS 2.0 JSON Data Types and Policy Language Specification](crate#resources) for policy details!
     ///
     /// *See also:* [`Fapi_Import()`](https://tpm2-tss.readthedocs.io/en/stable/group___fapi___import.html)
     pub fn import(&mut self, path: &str, data: ImportData) -> Result<(), ErrorCode> {
