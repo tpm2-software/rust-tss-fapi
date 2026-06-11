@@ -40,7 +40,7 @@ services:
       context: ../swtpm
       dockerfile: swtpm.Dockerfile
       args:
-        BASE_VERSION: ${BASE_VERSION_SWTPM:-r27@sha256:1ace01924869395d5a526825a0a8326f7042da65ea150dc8720f055a674652da}
+        BASE_VERSION: ${BASE_VERSION_SWTPM:-r28@sha256:fbb76f35eebf0b62da2e65fbcdaae02fb3ae34a4492cc1e70b3b38a669128f0e}
     volumes:
       - log:/var/log/swtpm:rw
     tmpfs:
