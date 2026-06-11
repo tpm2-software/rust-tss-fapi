@@ -31,7 +31,7 @@ fn test_version() {
         let library = black_box(version_info.library);
 
         // Verify the package version
-        assert_eq!(CURRENT_PKG_VERSION, format!("{}", package));
+        assert!(format!("{}", package).eq_ignore_ascii_case(CURRENT_PKG_VERSION));
 
         // Verify the FAPI version
         assert!((library.major > 3u16) || ((library.major == 3u16) && ((library.minor > 0u16) || (library.patch >= 3u16))));

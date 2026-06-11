@@ -10,7 +10,7 @@ static VERSION_INFO_PKG: OnceLock<VersionInfo> = OnceLock::new();
 static VERSION_INFO_SYS: OnceLock<VersionInfo> = OnceLock::new();
 
 /// Contains version information.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct VersionInfo {
     /// The *major* version of the software.
@@ -19,7 +19,7 @@ pub struct VersionInfo {
     pub minor: u16,
     /// The *patch* level of the software.
     pub patch: u16,
-    /// Additional version identifier (e.g. "beta-2")
+    /// Additional version identifier (e.g. "beta2" or Git hash)
     pub ident: Option<String>,
 }
 
@@ -46,7 +46,7 @@ pub fn get_version() -> FapiVersion {
 
 /// Parse a version string that is in the `"major.minor.patch"` format into a [`VersionInfo`] struct.
 fn parse_version(version_string: &str) -> VersionInfo {
-    let mut tokens = version_string.splitn(4usize, ['.', '+', '-', '_']).map(str::trim_ascii);
+    let mut tokens = version_string.splitn(4usize, ['.', '+', '-']).map(str::trim_ascii);
     VersionInfo {
         major: tokens.next().and_then(|str| str.parse::<u16>().ok()).unwrap_or_default(),
         minor: tokens.next().and_then(|str| str.parse::<u16>().ok()).unwrap_or_default(),
@@ -59,7 +59,7 @@ fn parse_version(version_string: &str) -> VersionInfo {
 impl Display for VersionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(ident_str) = self.ident.as_ref() {
-            write!(f, "{}.{}.{}-{}", self.major, self.minor, self.patch, ident_str)
+            write!(f, "{}.{}.{}+{}", self.major, self.minor, self.patch, ident_str)
         } else {
             write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
         }
@@ -84,8 +84,7 @@ mod tests {
         assert_eq!(format!("{}", parse_version("9.8")), "9.8.0");
         assert_eq!(format!("{}", parse_version("9.8.7")), "9.8.7");
 
-        assert_eq!(format!("{}", parse_version("1.2.3-alpha3")), "1.2.3-alpha3");
-        assert_eq!(format!("{}", parse_version("1.2.3-beta5")), "1.2.3-beta5");
-        assert_eq!(format!("{}", parse_version("1.2.3-rc7")), "1.2.3-rc7");
+        assert_eq!(format!("{}", parse_version("1.2.3-alpha3")), "1.2.3+alpha3");
+        assert_eq!(format!("{}", parse_version("1.2.3+65ffe67c")), "1.2.3+65ffe67c");
     }
 }
