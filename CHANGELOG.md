@@ -4,11 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [0.14.0] - unreleased
+## [0.14.0] - 2026-06-18
 
 ### Added
 
+- Added support for the new FAPI function `digest_and_sign()`.
 - The stub function `get_poll_handles()` has been repleaced with a proper implementation.
+- Implemented build-time detection of available FAPI functions.
 
 ### Changed
 

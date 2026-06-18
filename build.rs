@@ -12,7 +12,7 @@ use regex::Regex;
 use std::{
     env,
     fs::File,
-    io::{Error as IoError, Write},
+    io::{BufRead, BufReader, Error as IoError, Write},
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -26,6 +26,9 @@ const LIBRARY_NAME: &str = "tss2-fapi";
 /// Minimal required version of the native FAPI library
 /// The version specified here is equal to the TSS 2.0 version available in Ubuntu 22.04 LTS
 const LIBRARY_MIN_VERSION: &str = "3.2.0";
+
+/// Regex to parse public FAPI function name for the 'bindings.rs' file
+static REGEX_FUNCTION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\bpub\s+fn\s+Fapi_([a-zA-Z0-9]+)\b").unwrap());
 
 /// Regex to parse the version string, assuming the `<major>.<minor>.<patch>` format
 static REGEX_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)\.(\d+)([-+][a-zA-Z0-9.]+)?").unwrap());
@@ -67,14 +70,18 @@ fn main() {
     }
 
     // Invoke the `bindgen` for TSS 2.0 FAPI library
+    let fapi_bindings_rs = out_path.join("tss2_fapi_bindings.rs");
     bindgen_builder
         .header_contents("wrapper.h", "#include <tss2_fapi.h>")
         .layout_tests(false)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate FAPI bindings")
-        .write_to_file(out_path.join("tss2_fapi_bindings.rs"))
+        .write_to_file(&fapi_bindings_rs)
         .expect("Failed to write FAPI bindings!");
+
+    // Detect all available FAPI functions
+    detect_fapi_functions(&fapi_bindings_rs).expect("Failed to detect available functions!");
 
     // Persist the detected library version
     if let Err(error) = write_version_string(&out_path.join("tss2_fapi_versinfo.rs"), &tss2_fapi.3) {
@@ -108,6 +115,20 @@ fn detect_tss2_library() -> Result<LibraryConfig, Error> {
         .statik(statik)
         .probe(LIBRARY_NAME)
         .map(|config| (config.libs, config.link_paths, config.include_paths, config.version))
+}
+
+/// Detect all available FAPI functions
+///
+/// For each FAPI function that is available in the TSS 2.0 library, the corresponding `--cfg` flag will be set!
+fn detect_fapi_functions(bindings: &Path) -> Result<(), IoError> {
+    for line in BufReader::new(File::open(bindings)?).lines().map_while(|line| line.ok()) {
+        for caps in REGEX_FUNCTION.captures_iter(&line) {
+            if let Some(fn_name) = caps.get(1) {
+                println!("cargo:rustc-cfg=fapi_sys_fn_{}", fn_name.as_str());
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Persist the version string to output file, so that it can be evaluated in the code at runtime

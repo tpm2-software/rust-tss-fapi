@@ -21,6 +21,7 @@ use crate::{
 /* Const */
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
+const ERR_NOT_IMPLEMENTED: ErrorCode = ErrorCode::InternalError(InternalError::NotImplemented);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///
@@ -677,6 +678,66 @@ impl FapiContext {
         .and_then(|signature| {
             SignResult::from(signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string())
         })
+    }
+
+    /// Computes the digest of the document given by `data` using the algorithm defined by the "nameAlg" of a restricted signing key, identified by its path, and subsequently signs the resulting digest.
+    ///
+    /// The flags `get_pubkey` and `get_cert` control whether the signer's public key and/or the signer certificate shall be returned. If requested, a signer certificate may *not* be available, in which case a `None` value is returned.
+    ///
+    /// *Requires:* libtss version 4.2.0 or later
+    pub fn digest_and_sign(
+        &mut self,
+        key_path: &str,
+        pad_algo: Option<&[PaddingFlags]>,
+        data: &[u8],
+        get_pubkey: bool,
+        get_cert: bool,
+    ) -> Result<SignResult, ErrorCode> {
+        self.digest_and_sign0(key_path, pad_algo, data, get_pubkey, get_cert)
+    }
+
+    #[cfg(fapi_sys_fn_DigestAndSign)]
+    fn digest_and_sign0(
+        &mut self,
+        key_path: &str,
+        pad_algo: Option<&[PaddingFlags]>,
+        data: &[u8],
+        get_pubkey: bool,
+        get_cert: bool,
+    ) -> Result<SignResult, ErrorCode> {
+        fail_if_empty!(data);
+
+        let cstr_path = CStringHolder::try_from(key_path)?;
+        let cstr_algo = CStringHolder::try_from(Flags::as_string(pad_algo)?)?;
+        let cstr_data = CBinaryHolder::try_from(data)?;
+
+        let mut signature_data: *mut u8 = ptr::null_mut();
+        let mut signature_size: usize = 0;
+        let mut public_key_pem: *mut c_char = ptr::null_mut();
+        let mut signer_crt_pem: *mut c_char = ptr::null_mut();
+
+        self.fapi_call(false, |context| unsafe {
+            fapi_sys::Fapi_DigestAndSign(
+                context,
+                cstr_path.as_ptr(),
+                cstr_algo.as_ptr(),
+                cstr_data.as_ptr(),
+                cstr_data.len(),
+                &mut signature_data,
+                &mut signature_size,
+                cond_out(&mut public_key_pem, get_pubkey),
+                cond_out(&mut signer_crt_pem, get_cert),
+            )
+        })
+        .and_then(|_| FapiMemoryHolder::from_raw(signature_data, signature_size).to_vec().ok_or(ERR_NO_RESULT_DATA))
+        .and_then(|signature| {
+            SignResult::from(signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string())
+        })
+    }
+
+    #[cfg(not(fapi_sys_fn_DigestAndSign))]
+    fn digest_and_sign0(&mut self, _: &str, _: Option<&[PaddingFlags]>, _: &[u8], _: bool, _: bool) -> Result<SignResult, ErrorCode> {
+        Err(ERR_NOT_IMPLEMENTED)
     }
 
     /// Verifies a signature using a public key found in a keyPath.

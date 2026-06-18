@@ -1,6 +1,6 @@
 [package]
 name = "tss2-fapi-rs"
-version = "0.13.4"
+version = "0.14.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
@@ -38,3 +38,6 @@ rsa = "=0.10.0-rc.18"
 serial_test = "3.5.0"
 sha2 = "0.11.0"
 uuid = "1.23.3"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fapi_sys_fn_DigestAndSign)'] }
