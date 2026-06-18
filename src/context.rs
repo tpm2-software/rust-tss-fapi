@@ -737,6 +737,7 @@ impl FapiContext {
     }
 
     #[cfg(not(fapi_sys_have_fn_DigestAndSign))]
+    #[inline(never)]
     fn digest_and_sign0(&mut self, _: &str, _: Option<&[PaddingFlags]>, _: &[u8], _: bool, _: bool) -> Result<SignResult, ErrorCode> {
         Err(ErrorCode::InternalError(InternalError::NotImplemented))
     }
