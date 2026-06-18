@@ -30,7 +30,7 @@ env_logger = "0.11.10"
 function_name = "0.3.0"
 hex = "0.4.3"
 memory-stats = "1.2.0"
-p256 = "=0.14.0-rc.11"
+p256 = "=0.14.0-rc.12"
 rand = "0.10.1"
 rand_chacha = "0.10.0"
 regex = "1.12.4"
@@ -40,4 +40,4 @@ sha2 = "0.11.0"
 uuid = "1.23.3"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fapi_sys_fn_DigestAndSign)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fapi_sys_have_fn_DigestAndSign)'] }

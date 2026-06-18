@@ -124,7 +124,7 @@ fn detect_fapi_functions(bindings: &Path) -> Result<(), IoError> {
     for line in BufReader::new(File::open(bindings)?).lines().map_while(|line| line.ok()) {
         for caps in REGEX_FUNCTION.captures_iter(&line) {
             if let Some(fn_name) = caps.get(1) {
-                println!("cargo:rustc-cfg=fapi_sys_fn_{}", fn_name.as_str());
+                println!("cargo:rustc-cfg=fapi_sys_have_fn_{}", fn_name.as_str());
             }
         }
     }

@@ -21,7 +21,6 @@ use crate::{
 /* Const */
 const ERR_NO_RESULT_DATA: ErrorCode = ErrorCode::InternalError(InternalError::IncompleteResult);
 const ERR_INVALID_ARGUMENTS: ErrorCode = ErrorCode::InternalError(InternalError::InvalidArguments);
-const ERR_NOT_IMPLEMENTED: ErrorCode = ErrorCode::InternalError(InternalError::NotImplemented);
 
 /// Wraps the native `FAPI_CONTEXT` and exposes the related FAPI functions.
 ///
@@ -684,7 +683,9 @@ impl FapiContext {
     ///
     /// The flags `get_pubkey` and `get_cert` control whether the signer's public key and/or the signer certificate shall be returned. If requested, a signer certificate may *not* be available, in which case a `None` value is returned.
     ///
-    /// *Requires:* libtss version 4.2.0 or later
+    /// *See also:* [`Fapi_DigestAndSign()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___digest_and_sign.html)
+    ///
+    /// *Availability:* This function requires tss2-fapi version 4.2.0 or later
     pub fn digest_and_sign(
         &mut self,
         key_path: &str,
@@ -696,7 +697,7 @@ impl FapiContext {
         self.digest_and_sign0(key_path, pad_algo, data, get_pubkey, get_cert)
     }
 
-    #[cfg(fapi_sys_fn_DigestAndSign)]
+    #[cfg(fapi_sys_have_fn_DigestAndSign)]
     fn digest_and_sign0(
         &mut self,
         key_path: &str,
@@ -735,9 +736,9 @@ impl FapiContext {
         })
     }
 
-    #[cfg(not(fapi_sys_fn_DigestAndSign))]
+    #[cfg(not(fapi_sys_have_fn_DigestAndSign))]
     fn digest_and_sign0(&mut self, _: &str, _: Option<&[PaddingFlags]>, _: &[u8], _: bool, _: bool) -> Result<SignResult, ErrorCode> {
-        Err(ERR_NOT_IMPLEMENTED)
+        Err(ErrorCode::InternalError(InternalError::NotImplemented))
     }
 
     /// Verifies a signature using a public key found in a keyPath.

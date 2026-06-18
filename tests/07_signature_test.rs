@@ -15,7 +15,7 @@ use common::{
     utils::my_tpm_finalizer,
 };
 use function_name::named;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
@@ -23,7 +23,7 @@ use sha2::{Digest, Sha256};
 use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError, KeyFlags, PaddingFlags};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
-const KEY_FLAGS_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign, KeyFlags::Restricted];
+const KEY_FLAGS_SIGN_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign, KeyFlags::Restricted];
 const PADDING_RSAPSS: &[PaddingFlags] = &[PaddingFlags::RsaPss];
 
 // ==========================================================================
@@ -83,7 +83,9 @@ fn test_sign() {
     });
 }
 
-/// Test the `sign()` function to sign some random data with a suitable key and the matching padding algorithm
+/// Test the `digest_and_sign()` function to sign some random data with a suitable key and the matching padding algorithm
+///
+/// **Note:** This function may fail with `InternalError::NotImplemented` when using an older TSS/FAPI library version!
 #[test]
 #[serial]
 #[named]
@@ -106,7 +108,7 @@ fn test_digest_and_sign() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
-        match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN_RESTRICTED), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
@@ -123,7 +125,7 @@ fn test_digest_and_sign() {
         let signature = match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
             Ok(value) => value,
             Err(ErrorCode::InternalError(InternalError::NotImplemented)) => {
-                debug!("Fapi_DigestAndSign() not implemented!");
+                warn!("Fapi_DigestAndSign() not implemented!");
                 return;
             }
             Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
