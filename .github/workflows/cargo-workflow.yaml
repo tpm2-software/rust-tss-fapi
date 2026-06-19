@@ -32,7 +32,7 @@ jobs:
     name: cargo fmt
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
@@ -52,7 +52,7 @@ jobs:
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -79,7 +79,7 @@ jobs:
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -107,7 +107,7 @@ jobs:
         profile: [RSA2048SHA256, ECCP256SHA256]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -128,7 +128,7 @@ jobs:
     needs: [format, checks]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -144,7 +144,7 @@ jobs:
     needs: [format, checks]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
@@ -162,7 +162,7 @@ jobs:
         with:
           name: code-coverage-analysis
           path: target/llvm-cov/codecov-output.json
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           files: target/llvm-cov/codecov-output.json
           verbose: true
@@ -182,7 +182,7 @@ jobs:
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -214,7 +214,7 @@ jobs:
     needs: [examples, tests-native, tests-docker]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
@@ -227,7 +227,7 @@ jobs:
       - run: |
           cp -f docs/html/redir.html target/doc/index.html
           rm -f target/doc/.lock
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: target/doc/
 
@@ -239,7 +239,7 @@ jobs:
     needs: [examples, tests-native, tests-docker]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
@@ -271,7 +271,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Release build artifacts on GitHub
@@ -308,7 +308,7 @@ jobs:
     needs: build
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
