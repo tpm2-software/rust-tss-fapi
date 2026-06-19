@@ -656,6 +656,7 @@ mod tests {
     use std::{
         borrow::Cow,
         ffi::CString,
+        hint::black_box,
         sync::{Arc, Mutex},
     };
 
@@ -666,6 +667,7 @@ mod tests {
     }
 
     fn do_invoke_callbacks(cb_manager: &mut CallbackManager) {
+        let _ = black_box(format!("{:?}", cb_manager));
         let _ = cb_manager.auth_cb(cstr!("/HS/SRK/my/auth/path"), Some(cstr!("some object")));
         let _ = cb_manager.sign_cb(
             cstr!("/HS/SRK/my/sign/path"),
@@ -738,7 +740,7 @@ mod tests {
         let mut cb_manager = CallbackManager::new(CallbackTest::new("my_password"));
         do_invoke_callbacks(&mut cb_manager);
 
-        let my_callbacks = cb_manager.into_inner();
+        let mut my_callbacks = cb_manager.into_inner();
         let downcasted: &CallbackTest = my_callbacks.downcast().expect("Downcast failed!");
         let paths = downcasted.get_paths();
 
@@ -746,6 +748,8 @@ mod tests {
         assert_paths(&paths.1, "/HS/SRK/my/sign/path");
         assert_paths(&paths.2, "/HS/SRK/my/bran/path");
         assert_paths(&paths.3, "/HS/SRK/my/actn/path");
+
+        let _ = black_box(my_callbacks.downcast_mut::<CallbackTest>().expect("Downcast failed!"));
     }
 
     #[test]

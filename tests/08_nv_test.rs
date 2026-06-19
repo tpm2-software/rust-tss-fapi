@@ -20,7 +20,7 @@ use log::{debug, trace};
 use rand::{Rng, SeedableRng, rng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
-use tss2_fapi_rs::{FapiContext, NvFlags};
+use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError, NvFlags};
 
 const NV_ORDINARY_FLAGS: &[NvFlags] = &[NvFlags::NoDA];
 const NV_COUNTER_FLAGS: &[NvFlags] = &[NvFlags::Counter, NvFlags::NoDA];
@@ -142,6 +142,13 @@ fn test_nv_counter() {
 
         // Initialize TPM, if not already initialized
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
+
+        // Try to create with an explicit size
+        match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), NonZeroUsize::new(1usize), None, None) {
+            Ok(_) => panic!("Counter was created when it was not expected!"),
+            Err(ErrorCode::InternalError(InternalError::InvalidArguments)) => (),
+            Err(error) => panic!("NV index creation has failed: {:?}", error),
+        }
 
         // Create NV index, if not already created
         match context.create_nv(nv_path, Some(NV_COUNTER_FLAGS), None, None, None) {

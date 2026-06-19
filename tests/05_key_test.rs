@@ -17,7 +17,7 @@ use function_name::named;
 use log::debug;
 use serial_test::serial;
 use std::collections::HashSet;
-use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, ImportData, KeyFlags};
+use tss2_fapi_rs::{BaseErrorCode, ErrorCode, FapiContext, ImportData, InternalError, KeyFlags};
 
 const KEY_FLAGS: &[KeyFlags] = &[KeyFlags::NoDA];
 
@@ -242,6 +242,13 @@ fn test_get_tpm_blobs() {
             Ok(_) => debug!("Key created successfully."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
+
+        // Try with all three flags set to false
+        match context.get_tpm_blobs(key_path, false, false, false) {
+            Ok(_) => panic!("Retrieved TPM blob when it was not expected!"),
+            Err(ErrorCode::InternalError(InternalError::InvalidArguments)) => (),
+            Err(error) => panic!("Failed to obtain TPM blobs: {:?}", error),
+        };
 
         // Fetch public/private key data
         let blobs = match context.get_tpm_blobs(key_path, true, false, false) {
