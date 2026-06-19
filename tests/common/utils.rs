@@ -7,7 +7,6 @@
 use super::callback::MyCallbacks;
 use log::info;
 use std::sync::OnceLock;
-use tss2_fapi_rs::FapiContext;
 
 /* Defaults */
 const LOOPS_DEFAULT_VALUE: usize = 3;
@@ -34,11 +33,23 @@ macro_rules! repeat_test {
 
 /// Skip test conditionally on profile name.
 #[macro_export]
-macro_rules! skip_test_ifeq {
+macro_rules! skip_if_profile_eq {
     ($conf:ident, $name:literal) => {
         if $conf.prof_name().get(..$name.len()).map_or(false, |name| name.eq_ignore_ascii_case($name)) {
-            warn!("Skipping this test for \"{}\" profile!", $name);
-            return; /* skip! */
+            warn!("Skipping this test for the \"{}\" profile!", $name);
+            return; /* skip test! */
+        }
+    };
+}
+
+/// Skip test conditionally on library version.
+#[macro_export]
+macro_rules! skip_if_version_lt {
+    ($major:literal, $minor:literal) => {
+        let _version = get_version();
+        if (_version.library.major < $major) || ((_version.library.major == $major) && (_version.library.minor < $minor)) {
+            warn!("Skipping this test for this library version! ({} < {}.{})", _version.library, $major, $minor);
+            return; /* skip test! */
         }
     };
 }
@@ -65,7 +76,9 @@ macro_rules! tpm_initialize {
 pub fn my_tpm_finalizer(password: &'static str) {
     log::debug!("Cleaning up the TPM now!");
     let callbacks = MyCallbacks::new(password, None);
-    if FapiContext::new().and_then(|mut fpai_ctx| fpai_ctx.set_callbacks(callbacks).and_then(|_| fpai_ctx.delete("/"))).is_err() {
-        log::warn!("Failed to clean-up test objects, take care!");
+    if let Err(error) = tss2_fapi_rs::FapiContext::new().and_then(|mut fpai_ctx| fpai_ctx.set_callbacks(callbacks).and_then(|_| fpai_ctx.delete("/"))) {
+        if !matches!(error, tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::NotProvisioned)) {
+            log::error!("Failed to clean up TPM, take care! [{:?}]", error);
+        }
     }
 }

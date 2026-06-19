@@ -32,7 +32,7 @@ const KEY_FLAGS_ENCR: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Decrypt];
 #[named]
 fn test_encrypt() {
     let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
-    skip_test_ifeq!(configuration, "ECC");
+    skip_if_profile_eq!(configuration, "ECC");
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myEncKey{}", i);
@@ -76,7 +76,7 @@ fn test_encrypt() {
 #[named]
 fn test_decrypt() {
     let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
-    skip_test_ifeq!(configuration, "ECC");
+    skip_if_profile_eq!(configuration, "ECC");
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/myEncKey{}", i);

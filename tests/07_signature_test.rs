@@ -145,13 +145,7 @@ fn test_sign_with_pubkey() {
 #[named]
 fn test_digest_and_sign() {
     let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
-
-    // Ignore that Fapi_DigestAndSign() is *not* implemented in old versions!
-    let fapi_version = get_version();
-    if (fapi_version.library.major < 4u16) || ((fapi_version.library.major == 4u16) && (fapi_version.library.minor < 2u16)) {
-        warn!("Fapi_DigestAndSign() is *not* implemented in this library version!");
-        return; /* skip test */
-    }
+    skip_if_version_lt!(4u16, 2u16);
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/mySigKey{}", i);
