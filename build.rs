@@ -31,7 +31,7 @@ const LIBRARY_MIN_VERSION: &str = "3.2.0";
 static REGEX_FUNCTION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\bpub\s+fn\s+Fapi_([a-zA-Z0-9]+)\b").unwrap());
 
 /// Regex to parse the version string, assuming the `<major>.<minor>.<patch>` format
-static REGEX_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)\.(\d+)([-+][a-zA-Z0-9.]+)?").unwrap());
+static REGEX_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)\.(\d+)([-+][a-zA-Z0-9.]+)*").unwrap());
 
 /// This build scripts is required to detect and link the "native" FAPI library
 fn main() {

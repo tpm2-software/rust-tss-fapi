@@ -20,7 +20,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
-use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError, KeyFlags, PaddingFlags};
+use tss2_fapi_rs::{FapiContext, KeyFlags, PaddingFlags, get_version};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 const KEY_FLAGS_SIGN_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign, KeyFlags::Restricted];
@@ -70,65 +70,6 @@ fn test_sign() {
         let signature = match context.sign(key_path, padding_algo, &digest, false, false) {
             Ok(value) => value,
             Err(error) => panic!("Failed to create the signature: {:?}", error),
-        };
-
-        // Validate signature data
-        let signature_data: &[u8] = signature.sign_value.as_ref();
-        assert!(signature_data.len() >= 32usize);
-        debug!("Signature value: {}", hex::encode(signature_data));
-
-        // Verify absent data
-        assert!(signature.public_key.is_none());
-        assert!(signature.certificate.is_none());
-    });
-}
-
-/// Test the `digest_and_sign()` function to sign some random data with a suitable key and the matching padding algorithm
-///
-/// **Note:** This function may fail with `InternalError::NotImplemented` when using an older TSS/FAPI library version!
-#[test]
-#[serial]
-#[named]
-fn test_digest_and_sign() {
-    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
-
-    repeat_test!(|i| {
-        let key_path = &format!("HS/SRK/mySigKey{}", i);
-
-        // Initialize RNG
-        let mut rng = ChaChaRng::from_seed(create_seed(i));
-
-        // Create FAPI context
-        let mut context = match FapiContext::new() {
-            Ok(fpai_ctx) => fpai_ctx,
-            Err(error) => panic!("Failed to create context: {:?}", error),
-        };
-
-        // Initialize TPM, if not already initialized
-        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
-
-        // Create new key, if not already created
-        match context.create_key(key_path, Some(KEY_FLAGS_SIGN_RESTRICTED), None, Some(PASSWORD)) {
-            Ok(_) => debug!("Key created."),
-            Err(error) => panic!("Key creation has failed: {:?}", error),
-        }
-
-        // Generate message to be signed
-        let data = generate_bytes::<256usize>(&mut rng);
-        debug!("Digest to be signed: {}", hex::encode(&data[..]));
-
-        // Select padding algorithm
-        let padding_algo = get_padding_algorithm(&configuration);
-        trace!("Padding algorithm: {:?}", padding_algo);
-
-        // Create the signature
-        let signature = match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
-            Ok(value) => value,
-            Err(ErrorCode::InternalError(InternalError::NotImplemented)) => {
-                warn!("Fapi_DigestAndSign() not implemented!");
-                return;
-            }
-            Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
         };
 
         // Validate signature data
@@ -195,6 +136,66 @@ fn test_sign_with_pubkey() {
 
         // Print the certificate, if any:
         debug!("Certificate: \"{}\"", signature.certificate.unwrap_or_else(String::new).trim());
+    });
+}
+
+/// Test the `digest_and_sign()` function to sign some random data with a suitable key and the matching padding algorithm
+#[test]
+#[serial]
+#[named]
+fn test_digest_and_sign() {
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
+
+    // Ignore that Fapi_DigestAndSign() is *not* implemented in old versions!
+    let fapi_version = get_version();
+    if (fapi_version.library.major < 4u16) || ((fapi_version.library.major == 4u16) && (fapi_version.library.minor < 2u16)) {
+        warn!("Fapi_DigestAndSign() is *not* implemented in this library version!");
+        return; /* skip test */
+    }
+
+    repeat_test!(|i| {
+        let key_path = &format!("HS/SRK/mySigKey{}", i);
+
+        // Initialize RNG
+        let mut rng = ChaChaRng::from_seed(create_seed(i));
+
+        // Create FAPI context
+        let mut context = match FapiContext::new() {
+            Ok(fpai_ctx) => fpai_ctx,
+            Err(error) => panic!("Failed to create context: {:?}", error),
+        };
+
+        // Initialize TPM, if not already initialized
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
+
+        // Create new key, if not already created
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN_RESTRICTED), None, Some(PASSWORD)) {
+            Ok(_) => debug!("Key created."),
+            Err(error) => panic!("Key creation has failed: {:?}", error),
+        }
+
+        // Generate message to be signed
+        let data = generate_bytes::<256usize>(&mut rng);
+        debug!("Digest to be signed: {}", hex::encode(&data[..]));
+
+        // Select padding algorithm
+        let padding_algo = get_padding_algorithm(&configuration);
+        trace!("Padding algorithm: {:?}", padding_algo);
+
+        // Create the signature
+        let signature = match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
+            Ok(value) => value,
+            Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
+        };
+
+        // Validate signature data
+        let signature_data: &[u8] = signature.sign_value.as_ref();
+        assert!(signature_data.len() >= 32usize);
+        debug!("Signature value: {}", hex::encode(signature_data));
+
+        // Verify absent data
+        assert!(signature.public_key.is_none());
+        assert!(signature.certificate.is_none());
     });
 }
 

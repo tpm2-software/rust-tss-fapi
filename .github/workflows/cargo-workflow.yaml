@@ -128,7 +128,7 @@ jobs:
     needs: [format, checks]
     strategy:
       matrix:
-        branch: ["stable", "unstable"]
+        branch: ["stable", "unstable", "snapshot"]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
