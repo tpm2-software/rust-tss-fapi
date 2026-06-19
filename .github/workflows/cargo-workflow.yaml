@@ -57,10 +57,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ github.run_id }}-check
       - run: |
           pkgconf --path tss2-fapi
           pkgconf --cflags --libs tss2-fapi
@@ -84,10 +84,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ github.run_id }}-examples
       - run: |
           cp -vr examples/data ~/my-fapi-config
           make docker.swtpm DETACH=1
@@ -112,10 +112,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ github.run_id }}-tests
       - run: |
           make docker.swtpm DETACH=1
           make tests FAPI_RS_TEST_PROF=${{ matrix.profile }}
@@ -151,10 +151,10 @@ jobs:
           cache: false
           components: llvm-tools-preview
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ github.run_id }}-codecov
       - run: |
           make docker.swtpm DETACH=1
           make codecov RUST_LOG=info TSS2_LOG=all+none
@@ -187,10 +187,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ github.run_id }}-build
       - run: make build
       - run: cp -vf README.md LICENSE target/release/
       - run: |
@@ -219,10 +219,10 @@ jobs:
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ github.run_id }}-docs
       - run: make docs
       - run: |
           cp -f docs/html/redir.html target/doc/index.html
@@ -244,10 +244,10 @@ jobs:
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
+          version: v3-${{ github.run_id }}-package
       - run: make package
       - uses: actions/upload-artifact@v4
         with:
@@ -313,7 +313,7 @@ jobs:
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
           version: v2-${{ matrix.architecture }}-${{ matrix.platform }}-${{ github.run_id }}
