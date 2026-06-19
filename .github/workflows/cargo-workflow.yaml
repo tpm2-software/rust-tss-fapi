@@ -115,7 +115,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ github.run_id }}-tests
+          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ matrix.profile }}-${{ github.run_id }}-tests
       - run: |
           make docker.swtpm DETACH=1
           make tests FAPI_RS_TEST_PROF=${{ matrix.profile }}
@@ -158,11 +158,11 @@ jobs:
       - run: |
           make docker.swtpm DETACH=1
           make codecov RUST_LOG=info TSS2_LOG=all+none
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: code-coverage-analysis
           path: target/llvm-cov/codecov-output.json
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           files: target/llvm-cov/codecov-output.json
           verbose: true
@@ -197,7 +197,7 @@ jobs:
           printf "%s\n%s\n%s\n%s\n%s\n" "${GITHUB_REF} @ ${GITHUB_SHA:0:12}" \
           "$(date -R)" "$(lsb_release -s -d)" "$(rustc --version)" \
           "$(pkg-config --print-provides tss2-fapi)" > target/release/BUILD_INFO
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist.ubuntu-${{ matrix.platform }}-${{ matrix.architecture }}.rust-${{ matrix.rust }}
           path: |
@@ -249,7 +249,7 @@ jobs:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
           version: v3-${{ github.run_id }}-package
       - run: make package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist.package
           path: target/package/**/*.crate
