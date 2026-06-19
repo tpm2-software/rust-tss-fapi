@@ -9,7 +9,7 @@ services:
       context: ./
       dockerfile: tests.Dockerfile
       args:
-        BASE_VERSION: ${BASE_VERSION_TESTS:-r28@sha256:288f3e55a5d4f0fa96388714ec0a2cd3f2ccfa471d22b424ae24fa112bfeab35}
+        BASE_VERSION: r29@sha256:c33d92b8bd58a5397cf6ca7af960a68658256209a3f05c7be89bd55fdf007b45
     volumes:
       - ../../../:/var/opt/rust/src:ro
       - log:/var/log/tss2-fapi-rs:rw
@@ -40,7 +40,7 @@ services:
       context: ../swtpm
       dockerfile: swtpm.Dockerfile
       args:
-        BASE_VERSION: ${BASE_VERSION_SWTPM:-r29@sha256:17fa49a22694ca52fa86c24f9907149d8bcf6d2d79909b5105410560104fb016}
+        BASE_VERSION: r29@sha256:17fa49a22694ca52fa86c24f9907149d8bcf6d2d79909b5105410560104fb016
     volumes:
       - log:/var/log/swtpm:rw
     tmpfs:

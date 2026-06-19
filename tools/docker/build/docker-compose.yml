@@ -6,7 +6,7 @@ services:
       context: ./
       dockerfile: build.Dockerfile
       args:
-        BASE_VERSION: ${BASE_VERSION_BUILD:-r28@sha256:288f3e55a5d4f0fa96388714ec0a2cd3f2ccfa471d22b424ae24fa112bfeab35}
+        BASE_VERSION: r29@sha256:c33d92b8bd58a5397cf6ca7af960a68658256209a3f05c7be89bd55fdf007b45
     volumes:
       - ../../../:/var/opt/rust/src:ro
       - out:/var/tmp/rust:rw
