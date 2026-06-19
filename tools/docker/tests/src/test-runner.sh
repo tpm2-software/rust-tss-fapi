@@ -9,6 +9,10 @@ if [[ -n "${TEST_KEEP_RUNNING}" && "${TEST_KEEP_RUNNING}" -gt 0 ]]; then
 	trap "sleep inf" EXIT
 fi
 
+( . /etc/os-release && printf '%s %s ["%s"]\n' "${NAME:-Linux}" "${VERSION:-${VERSION_CODENAME:-Unknown}}" "${PRETTY_NAME:-Unknown}" )
+cargo version || true
+printf 'tss2-fapi: %s\n' "$(pkgconf --modversion tss2-fapi)" || true
+
 function trace() {
 	local -
 	set -o xtrace

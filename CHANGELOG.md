@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 - Added support for the new FAPI function `digest_and_sign()`.
 - The stub function `get_poll_handles()` has been repleaced with a proper implementation.
 - Implemented build-time detection of available FAPI functions.
+- Added an additional "unstable" (Debian Sid) configuration to the Docker-based tests.
 
 ### Changed
 

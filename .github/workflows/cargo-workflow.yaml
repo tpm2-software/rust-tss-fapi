@@ -126,6 +126,9 @@ jobs:
   tests-docker:
     name: docker tests
     needs: [format, checks]
+    strategy:
+      matrix:
+        branch: ["stable", "unstable"]
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
@@ -134,7 +137,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           cache: false
       - run: |
-          make docker.tests
+          make docker.tests TSSFAPI_TEST_BRANCH=${{ matrix.branch }}
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Code coverage analysis (codecov)
