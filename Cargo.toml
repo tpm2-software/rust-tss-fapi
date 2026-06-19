@@ -15,6 +15,7 @@ locking = []
 full_locking = ["locking"]
 
 [dependencies]
+cfg-if = "1.0.4"
 json = "0.12.4"
 log = "0.4.32"
 

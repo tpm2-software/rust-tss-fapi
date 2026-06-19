@@ -8,10 +8,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Added
 
-- Added support for the new FAPI function `digest_and_sign()`.
+- Added support for the new FAPI function `digest_and_sign()`, available with libtss2-fapi `4.2.0` or later.
 - The stub function `get_poll_handles()` has been repleaced with a proper implementation.
 - Implemented build-time detection of available FAPI functions.
-- Added an additional "unstable" (Debian Sid) configuration to the Docker-based tests.
+- Added `unstable` (Debian Sid) and `snapshot` (Git master) configurations to the Docker-based tests.
 
 ### Changed
 

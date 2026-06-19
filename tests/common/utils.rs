@@ -31,7 +31,7 @@ macro_rules! repeat_test {
     };
 }
 
-/// Skip test conditionally on profile name.
+/// Skip test conditionally, based on profile name.
 #[macro_export]
 macro_rules! skip_if_profile_eq {
     ($conf:ident, $name:literal) => {
@@ -42,16 +42,13 @@ macro_rules! skip_if_profile_eq {
     };
 }
 
-/// Skip test conditionally on library version.
+/// Check `libtss2-fapi` library version at runtime.
 #[macro_export]
-macro_rules! skip_if_version_lt {
-    ($major:literal, $minor:literal) => {
-        let _version = get_version();
-        if (_version.library.major < $major) || ((_version.library.major == $major) && (_version.library.minor < $minor)) {
-            warn!("Skipping this test for this library version! ({} < {}.{})", _version.library, $major, $minor);
-            return; /* skip test! */
-        }
-    };
+macro_rules! libtss2_version_lt {
+    ($major:literal, $minor:literal) => {{
+        let _version = tss2_fapi_rs::get_version();
+        (_version.library.major < $major) || ((_version.library.major == $major) && (_version.library.minor < $minor))
+    }};
 }
 
 /// Set up the auth callback and then perform the initial provisioning.

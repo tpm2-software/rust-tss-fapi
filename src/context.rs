@@ -4,6 +4,7 @@
  * All rights reserved.
  **********************************************************************************************/
 
+use cfg_if::cfg_if;
 use std::{ffi::c_char, fmt::Display, num::NonZeroUsize, os::raw::c_void, ptr, sync::RwLock};
 
 use crate::{
@@ -685,7 +686,8 @@ impl FapiContext {
     ///
     /// *See also:* [`Fapi_DigestAndSign()`](https://tpm2-tss.readthedocs.io/en/latest/group___fapi___digest_and_sign.html)
     ///
-    /// *Availability:* This function requires tss2-fapi version 4.2.0 or later
+    /// *Availability:* Requires tss2-fapi version 4.2.0 or later
+    #[cfg_attr(not(fapi_sys_have_fn_DigestAndSign), allow(unused), inline(never))]
     pub fn digest_and_sign(
         &mut self,
         key_path: &str,
@@ -694,11 +696,17 @@ impl FapiContext {
         get_pubkey: bool,
         get_cert: bool,
     ) -> Result<SignResult, ErrorCode> {
-        self.digest_and_sign0(key_path, pad_algo, data, get_pubkey, get_cert)
+        cfg_if! {
+            if #[cfg(fapi_sys_have_fn_DigestAndSign)] {
+                self._digest_and_sign(key_path, pad_algo, data, get_pubkey, get_cert)
+            } else {
+                Err(ErrorCode::InternalError(InternalError::NotImplemented))
+            }
+        }
     }
 
     #[cfg(fapi_sys_have_fn_DigestAndSign)]
-    fn digest_and_sign0(
+    fn _digest_and_sign(
         &mut self,
         key_path: &str,
         pad_algo: Option<&[PaddingFlags]>,
@@ -734,12 +742,6 @@ impl FapiContext {
         .and_then(|signature| {
             SignResult::from(signature, FapiMemoryHolder::from_str(public_key_pem).to_string(), FapiMemoryHolder::from_str(signer_crt_pem).to_string())
         })
-    }
-
-    #[cfg(not(fapi_sys_have_fn_DigestAndSign))]
-    #[inline(never)]
-    fn digest_and_sign0(&mut self, _: &str, _: Option<&[PaddingFlags]>, _: &[u8], _: bool, _: bool) -> Result<SignResult, ErrorCode> {
-        Err(ErrorCode::InternalError(InternalError::NotImplemented))
     }
 
     /// Verifies a signature using a public key found in a keyPath.

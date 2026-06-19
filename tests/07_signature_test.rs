@@ -15,12 +15,12 @@ use common::{
     utils::my_tpm_finalizer,
 };
 use function_name::named;
-use log::{debug, trace, warn};
+use log::{debug, info, trace};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
-use tss2_fapi_rs::{FapiContext, KeyFlags, PaddingFlags, get_version};
+use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError, KeyFlags, PaddingFlags};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
 const KEY_FLAGS_SIGN_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign, KeyFlags::Restricted];
@@ -145,7 +145,6 @@ fn test_sign_with_pubkey() {
 #[named]
 fn test_digest_and_sign() {
     let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
-    skip_if_version_lt!(4u16, 2u16);
 
     repeat_test!(|i| {
         let key_path = &format!("HS/SRK/mySigKey{}", i);
@@ -179,6 +178,10 @@ fn test_digest_and_sign() {
         // Create the signature
         let signature = match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
             Ok(value) => value,
+            Err(ErrorCode::InternalError(InternalError::NotImplemented)) if libtss2_version_lt!(4u16, 2u16) => {
+                info!("digest_and_sign() not supported!");
+                return; /* skip test */
+            }
             Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
         };
 

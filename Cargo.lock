@@ -1048,6 +1048,7 @@ name = "tss2-fapi-rs"
 version = "0.14.0"
 dependencies = [
  "bindgen",
+ "cfg-if",
  "const-random",
  "digest",
  "env_logger",
