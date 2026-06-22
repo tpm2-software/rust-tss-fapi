@@ -82,6 +82,7 @@ fn main() {
     }
 
     // Verify the signature
+    info!("Verifying signature, please wait...");
     let verify_result = match context.verify_signature(MY_KEYPATH, &digest, &signature.sign_value[..]) {
         Ok(value) => value,
         Err(error) => panic!("Failed to verify the signature: {:?}", error),

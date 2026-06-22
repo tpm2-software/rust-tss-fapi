@@ -26,6 +26,7 @@ regex = "1.12.4"
 
 [dev-dependencies]
 const-random = "0.1.18"
+criterion = "=0.7.0"
 digest = "0.11.3"
 env_logger = "0.11.10"
 function_name = "0.3.0"
@@ -42,3 +43,7 @@ uuid = "1.23.3"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fapi_sys_have_fn_DigestAndSign)'] }
+
+[[bench]]
+name = "fapi_benchmark"
+harness = false

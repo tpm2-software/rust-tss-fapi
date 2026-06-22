@@ -4,7 +4,7 @@ include tools/docker/docker.mk
 
 DOCKER := $(foreach target,$(DOCKER_TARGETS),docker.$(target))
 
-.PHONY: all build check clean codecov docs examples fixup libtpms package publish tests $(DOCKER)
+.PHONY: all bench build check clean codecov docs examples fixup libtpms package publish tests $(DOCKER)
 
 all: clean check build
 
@@ -27,6 +27,9 @@ examples:
 	for i in $(basename $(notdir $(wildcard examples/*.rs))); do \
 		cargo run --example $$i; \
 	done
+
+bench:
+	TSS2_LOG="all+none" cargo bench --bench fapi_benchmark $(if $(QUICK_MODE),-- --quick)
 
 docs:
 	cargo doc --no-deps --locked

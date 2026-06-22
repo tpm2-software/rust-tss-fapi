@@ -140,6 +140,33 @@ jobs:
           make docker.tests TSSFAPI_TEST_BRANCH=${{ matrix.branch }}
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Benchmarks
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  benches:
+    name: benchmarks
+    needs: [format, checks]
+    strategy:
+      matrix:
+        platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        architecture: [amd64, arm64]
+    runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          cache: false
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+        with:
+          packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
+          version: v3-${{ matrix.architecture }}-${{ matrix.platform }}-${{ matrix.rust }}-${{ github.run_id }}-benches
+      - run: |
+          cp -vr examples/data ~/my-fapi-config
+          make docker.swtpm DETACH=1
+          make bench TSS2_FAPICONF=~/my-fapi-config/fapi-config.json QUICK_MODE=1
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Code coverage analysis (codecov)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   codecov:
