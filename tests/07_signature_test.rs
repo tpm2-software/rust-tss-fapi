@@ -15,16 +15,17 @@ use common::{
     utils::my_tpm_finalizer,
 };
 use function_name::named;
-use log::{debug, info, trace};
-use rand::SeedableRng;
+use log::{debug, trace, warn};
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serial_test::serial;
 use sha2::{Digest, Sha256};
-use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError, KeyFlags, PaddingFlags};
+use tss2_fapi_rs::{ErrorCode, FapiContext, InternalError, KeyFlags, PaddingFlags, Tpm2ErrFmt1, Tpm2ErrorCode};
 
 const KEY_FLAGS_SIGN: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign];
-const KEY_FLAGS_SIGN_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign, KeyFlags::Restricted];
+const KEY_FLAGS_RESTRICTED: &[KeyFlags] = &[KeyFlags::NoDA, KeyFlags::Sign, KeyFlags::Restricted];
 const PADDING_RSAPSS: &[PaddingFlags] = &[PaddingFlags::RsaPss];
+const TPM_GENERATED_VALUE: [u8; 4usize] = [0xFF, 0x54, 0x43, 0x47];
 
 // ==========================================================================
 // Test cases
@@ -162,13 +163,13 @@ fn test_digest_and_sign() {
         tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
 
         // Create new key, if not already created
-        match context.create_key(key_path, Some(KEY_FLAGS_SIGN_RESTRICTED), None, Some(PASSWORD)) {
+        match context.create_key(key_path, Some(KEY_FLAGS_SIGN), None, Some(PASSWORD)) {
             Ok(_) => debug!("Key created."),
             Err(error) => panic!("Key creation has failed: {:?}", error),
         }
 
-        // Generate message to be signed
-        let data = generate_bytes::<256usize>(&mut rng);
+        // Generate message with TPM_GENERATED_VALUE prefix
+        let data = create_tpm_generated_message::<256usize>(&mut rng);
         debug!("Digest to be signed: {}", hex::encode(&data[..]));
 
         // Select padding algorithm
@@ -179,7 +180,79 @@ fn test_digest_and_sign() {
         let signature = match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
             Ok(value) => value,
             Err(ErrorCode::InternalError(InternalError::NotImplemented)) if libtss2_version_lt!(4u16, 2u16) => {
-                info!("digest_and_sign() not supported!");
+                warn!("digest_and_sign() not supported!");
+                return; /* skip test */
+            }
+            Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
+        };
+
+        // Validate signature data
+        let signature_data: &[u8] = signature.sign_value.as_ref();
+        assert!(signature_data.len() >= 32usize);
+        debug!("Signature value: {}", hex::encode(signature_data));
+
+        // Verify absent data
+        assert!(signature.public_key.is_none());
+        assert!(signature.certificate.is_none());
+    });
+}
+
+/// Test the `digest_and_sign()` function to sign some random data with a suitable key and the matching padding algorithm
+#[test]
+#[serial]
+#[named]
+fn test_digest_and_sign_restricted() {
+    let configuration = TestConfiguration::with_finalizer(|| my_tpm_finalizer(PASSWORD));
+
+    repeat_test!(|i| {
+        let key_path = &format!("HS/SRK/mySigKey{}", i);
+
+        // Initialize RNG
+        let mut rng = ChaChaRng::from_seed(create_seed(i));
+
+        // Create FAPI context
+        let mut context = match FapiContext::new() {
+            Ok(fpai_ctx) => fpai_ctx,
+            Err(error) => panic!("Failed to create context: {:?}", error),
+        };
+
+        // Initialize TPM, if not already initialized
+        tpm_initialize!(context, PASSWORD, MyCallbacks::new(PASSWORD, None));
+
+        // Create new key, if not already created
+        match context.create_key(key_path, Some(KEY_FLAGS_RESTRICTED), None, Some(PASSWORD)) {
+            Ok(_) => debug!("Key created."),
+            Err(error) => panic!("Key creation has failed: {:?}", error),
+        }
+
+        // Generate message with TPM_GENERATED_VALUE prefix
+        let data = create_tpm_generated_message::<256usize>(&mut rng);
+        debug!("Digest to be signed: {}", hex::encode(&data[..]));
+
+        // Select padding algorithm
+        let padding_algo = get_padding_algorithm(&configuration);
+        trace!("Padding algorithm: {:?}", padding_algo);
+
+        // Try to create the signature
+        match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
+            Ok(_) => panic!("Signature of externally provided 'TPM_GENERATED_VALUE' data with restricted key!"),
+            Err(ErrorCode::TpmError(Tpm2ErrorCode::Tpm2ErrFmt1(Tpm2ErrFmt1::Ticket))) => (),
+            Err(ErrorCode::InternalError(InternalError::NotImplemented)) if libtss2_version_lt!(4u16, 2u16) => {
+                warn!("digest_and_sign() not supported!");
+                return; /* skip test */
+            }
+            Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
+        };
+
+        // Generate message *without* TPM_GENERATED_VALUE prefix
+        let data = create_externally_provided_message::<256usize>(&mut rng);
+        debug!("Digest to be signed: {}", hex::encode(&data[..]));
+
+        // Create the signature
+        let signature = match context.digest_and_sign(key_path, padding_algo, &data, false, false) {
+            Ok(value) => value,
+            Err(ErrorCode::InternalError(InternalError::NotImplemented)) if libtss2_version_lt!(4u16, 2u16) => {
+                warn!("digest_and_sign() not supported!");
                 return; /* skip test */
             }
             Err(error) => panic!("Failed to compute digest and create signature: {:?}", error),
@@ -284,5 +357,21 @@ fn get_padding_algorithm(config: &TestConfiguration) -> Option<&'static [Padding
     match get_key_type(config.prof_name()) {
         Some(KeyType::RsaKey) => Some(PADDING_RSAPSS),
         _ => None,
+    }
+}
+
+fn create_tpm_generated_message<const N: usize>(rng: &mut impl Rng) -> [u8; N] {
+    assert!(N > TPM_GENERATED_VALUE.len(), "Array is too short!");
+    let mut data = generate_bytes(rng);
+    data[..TPM_GENERATED_VALUE.len()].copy_from_slice(&TPM_GENERATED_VALUE);
+    data
+}
+
+fn create_externally_provided_message<const N: usize>(rng: &mut impl Rng) -> [u8; N] {
+    loop {
+        let data = generate_bytes(rng);
+        if !data.starts_with(&TPM_GENERATED_VALUE) {
+            return data;
+        }
     }
 }

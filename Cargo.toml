@@ -17,7 +17,7 @@ full_locking = ["locking"]
 [dependencies]
 cfg-if = "1.0.4"
 json = "0.12.4"
-log = "0.4.32"
+log = "0.4.33"
 
 [build-dependencies]
 bindgen = "0.72.1"
