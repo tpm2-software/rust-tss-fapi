@@ -1,3 +1,5 @@
+include rstss.mk
+
 .PHONY: all run down
 
 all: down run

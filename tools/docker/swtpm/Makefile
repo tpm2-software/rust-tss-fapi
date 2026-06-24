@@ -1,3 +1,5 @@
+include swtpm.mk
+
 .PHONY: all up down
 
 all: down up

@@ -1,8 +1,8 @@
-# Define default base image version
-ARG BASE_VERSION=UNDEFINED
+# Define default SWTPM base image version
+ARG IMAGE_VERSION_SWTPM=UNDEFINED
 
 # Docker file for SWTPM
-FROM danieltrick/swtpm-docker:${BASE_VERSION}
+FROM danieltrick/swtpm-docker@${IMAGE_VERSION_SWTPM}
 
 # Copy source files
 COPY src/entry-point.sh /opt/

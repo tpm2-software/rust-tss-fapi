@@ -4,9 +4,9 @@ services:
   build:
     build:
       context: ./
-      dockerfile: build.Dockerfile
+      dockerfile: rstss.Dockerfile
       args:
-        BASE_VERSION: r29@sha256:c33d92b8bd58a5397cf6ca7af960a68658256209a3f05c7be89bd55fdf007b45
+        IMAGE_VERSION_RSTSS: ${IMAGE_VERSION_RSTSS:?}
     volumes:
       - ../../../:/var/opt/rust/src:ro
       - out:/var/tmp/rust:rw
