@@ -230,7 +230,7 @@ fn test_get_platform_certificates() {
 
 fn generate_certificate(config: &TestConfiguration, public_key: JsonValue, common_name: &str) -> Option<String> {
     let common_name = common_name.trim();
-    assert!(!common_name.is_empty() && common_name.chars().all(|c| char::is_ascii_alphanumeric(&c) || c == '\x20'));
+    assert!(!common_name.is_empty() && common_name.chars().all(is_valid_name_char));
 
     let key_suffix = get_key_suffix(config).expect("Failed to determine key type!");
     let public_key = public_key["pem_ext_public"].as_str()?;
@@ -256,6 +256,10 @@ fn generate_certificate(config: &TestConfiguration, public_key: JsonValue, commo
         true => String::from_utf8(cert_data.stdout).ok(),
         _ => None,
     }
+}
+
+fn is_valid_name_char(c: char) -> bool {
+    char::is_ascii_alphanumeric(&c) || c == '\x20'
 }
 
 fn get_key_suffix(config: &TestConfiguration) -> Option<&'static str> {

@@ -29,7 +29,7 @@ examples:
 	done
 
 bench:
-	TSS2_LOG="all+none" cargo bench --bench fapi_benchmark $(if $(QUICK_MODE),-- --quick)
+	TSS2_LOG="all+error" cargo bench --bench fapi_benchmark $(if $(QUICK_MODE),-- --quick)
 
 docs:
 	cargo doc --no-deps --locked

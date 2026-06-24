@@ -28,7 +28,7 @@ static ENV_LOGGER_INIT: Once = Once::new();
 static REGEX_SWTPM: OnceLock<Regex> = OnceLock::new();
 
 /* Randomize (at compile-time!) */
-const RANDOM_UUID_PREFIX: Uuid = Uuid::from_u64_pair(const_random!(u64), const_random!(u64));
+static RANDOM_UUID_PREFIX: Uuid = Uuid::from_u64_pair(const_random!(u64), const_random!(u64));
 
 /* Finalizer type alias */
 type Finalizer = Box<dyn FnOnce() + 'static>;
@@ -108,7 +108,7 @@ impl<'a> TestConfiguration<'a> {
         if fs::metadata(&conf_file).is_ok_and(|file_info| file_info.is_file()) {
             debug!("Re-using the existing FAPI configuration!");
         } else {
-            Self::write_fapi_config(&conf_file, &data_path, &work_path, prof_name, tcti_conf);
+            Self::write_fapi_config(&conf_file, &data_path.join("fapi-config"), &work_path, prof_name, tcti_conf);
         }
 
         unsafe {
@@ -118,7 +118,7 @@ impl<'a> TestConfiguration<'a> {
         Self { uniq_lock, prof_name, data_path, work_path, finalizer }
     }
 
-    fn write_fapi_config(conf_file: &Path, data_path: &Path, work_path: &Path, prof_name: &str, tcti_conf: &str) {
+    fn write_fapi_config(conf_file: &Path, template_path: &Path, work_path: &Path, prof_name: &str, tcti_conf: &str) {
         if Path::try_exists(work_path).unwrap_or(true) {
             fs::remove_dir_all(work_path).expect("Failed to remove existing directory!");
         }
@@ -145,7 +145,7 @@ impl<'a> TestConfiguration<'a> {
         debug!("Logs directory: \"{}\"", logs_path.to_str().unwrap());
         fs::create_dir_all(&logs_path).expect("Failed to create subdirectories!");
 
-        let mut content = fs::read_to_string(data_path.join("fapi-config.json.template")).expect("Failed to read input file!");
+        let mut content = fs::read_to_string(template_path.join("fapi-config.json.template")).expect("Failed to read input file!");
         content = content.replace("{{TCTI_CFG}}", tcti_conf);
         content = content.replace("{{PROF_CFG}}", prof_name);
         content = content.replace("{{PROF_DIR}}", prof_path.to_str().unwrap());
@@ -156,7 +156,7 @@ impl<'a> TestConfiguration<'a> {
         trace!("FAPI conf data: {}", content.trim());
         fs::write(conf_file, &content).expect("Failed to write configuration to output file!");
 
-        for entry in fs::read_dir(data_path.join("profiles")).unwrap().flatten() {
+        for entry in fs::read_dir(template_path.join("profiles")).unwrap().flatten() {
             let fname = entry.file_name();
             if fname.to_str().is_some_and(|str| str.starts_with("P_")) {
                 let (path_src, path_dst) = (entry.path(), prof_path.join(fname));
