@@ -19,8 +19,10 @@ const FLAGS_STORAGE: [KeyFlags; 3usize] = [KeyFlags::Decrypt, KeyFlags::Restrict
 const FLAGS_SIGNING: [KeyFlags; 2usize] = [KeyFlags::Sign, KeyFlags::NoDA];
 
 mod bench_fapi {
-    use super::{FLAGS_SIGNING, FapiContext, TpmManager};
+    use super::{FLAGS_SIGNING, FapiContext, TpmManager, generate_random_message};
     use criterion::{BenchmarkGroup, Criterion, SamplingMode, measurement::Measurement};
+    use sha2::{Digest, Sha256};
+
     use std::{
         hint::black_box,
         num::NonZeroUsize,
@@ -72,15 +74,18 @@ mod bench_fapi {
         let sign_key_path = format!("{}/sign_key", &manager.1);
         manager.0.create_key(&sign_key_path, Some(&FLAGS_SIGNING), None, None).expect("Failed to create sign key!");
 
+        // Generate random message
+        let message: [u8; 256usize] = generate_random_message();
+
+        // Compute digest
+        let digest: [u8; 32usize] = Sha256::digest(message).into();
+
         // Measurement!
-        let counter: AtomicUsize = AtomicUsize::new(0usize);
-        group.bench_function("sign", |b| b.iter(|| _sign(&mut manager.0, &sign_key_path, black_box(counter.fetch_add(1usize, Ordering::Relaxed)))));
+        group.bench_function("sign", |b| b.iter(|| _sign(&mut manager.0, &sign_key_path, black_box(&digest))));
     }
 
-    fn _sign(context: &mut FapiContext, sign_key_path: &str, n: usize) {
-        let mut digest = [0u8; 32usize];
-        digest[..size_of::<usize>()].copy_from_slice(&n.to_be_bytes());
-        let _signature = black_box(context.sign(sign_key_path, None, &digest, false, false).expect("Failed to sign message!"));
+    fn _sign(context: &mut FapiContext, sign_key_path: &str, digest: &[u8]) {
+        let _signature = black_box(context.sign(sign_key_path, None, digest, false, false).expect("Failed to sign message!"));
     }
 
     /// Benchmark #4: Verify signature
@@ -94,8 +99,13 @@ mod bench_fapi {
         let sign_key_path = format!("{}/sign_key", &manager.1);
         manager.0.create_key(&sign_key_path, Some(&FLAGS_SIGNING), None, None).expect("Failed to create sign key!");
 
+        // Generate random message
+        let message: [u8; 256usize] = generate_random_message();
+
+        // Compute digest
+        let digest: [u8; 32usize] = Sha256::digest(message).into();
+
         // Sign message
-        let digest = [0u8; 32usize];
         let signature = manager.0.sign(&sign_key_path, None, &digest, false, false).expect("Failed to sign message!");
 
         // Measurement!
@@ -180,6 +190,12 @@ impl Drop for TpmManager {
             eprintln!("Failed to delete key: {:?}", error);
         }
     }
+}
+
+fn generate_random_message<const N: usize>() -> [u8; N] {
+    let mut message = [0u8; N];
+    rng().fill_bytes(&mut message[..]);
+    message
 }
 
 // ==========================================================================
