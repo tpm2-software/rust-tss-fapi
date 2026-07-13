@@ -1298,7 +1298,7 @@ dependencies = [
 
 [[package]]
 name = "tss2-fapi-rs"
-version = "0.14.1"
+version = "0.14.2"
 dependencies = [
  "bindgen",
  "cfg-if",

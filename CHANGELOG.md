@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.14.2] - 2026-07-13
+
+### Fixed
+
+- Fixed a number of clippy warnings that have come up with Rust 1.97 and that went unnoticed.
+
+### Changed
+
+- GitHub CI/CD: Various improvements to make the `check` job more strict.
+
 ## [0.14.1] - 2026-07-13
 
 ### Changed
