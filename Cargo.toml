@@ -22,7 +22,7 @@ log = "0.4.33"
 [build-dependencies]
 bindgen = "0.72.1"
 pkg-config = "0.3.33"
-regex = "1.12.4"
+regex = "1.13.0"
 
 [dev-dependencies]
 const-random = "0.1.18"
@@ -32,14 +32,14 @@ env_logger = "0.11.11"
 function_name = "0.3.0"
 hex = "0.4.3"
 memory-stats = "1.2.0"
-p256 = "=0.14.0-rc.13"
-rand = "0.10.1"
+p256 = "0.14.0"
+rand = "0.10.2"
 rand_chacha = "0.10.0"
-regex = "1.12.4"
+regex = "1.13.0"
 rsa = "=0.10.0-rc.18"
 serial_test = "3.5.0"
 sha2 = "0.11.0"
-uuid = "1.23.4"
+uuid = "1.23.5"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fapi_sys_have_fn_DigestAndSign)'] }
