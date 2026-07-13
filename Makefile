@@ -4,12 +4,21 @@ include tools/docker/docker.mk
 
 DOCKER := $(foreach target,$(DOCKER_TARGETS),docker.$(target))
 
-.PHONY: all bench build check clean codecov docs examples fixup libtpms package publish tests $(DOCKER)
+.PHONY: all bench build check clean clippy codecov docs examples fixup fmt libtpms package publish tests $(DOCKER)
 
 all: clean check build
 
+fmt:
+	cargo fmt --all
+
 check:
-	cargo check --release --locked --all-features --all-targets
+	cargo fmt --all --check
+	cargo check --no-default-features
+	cargo check --release --all-features --all-targets
+
+clippy: check
+	cargo clippy --no-default-features -- -D warnings
+	cargo clippy --all-features --all-targets -- -D warnings
 
 fixup: check
 	cargo upgrade && cargo update

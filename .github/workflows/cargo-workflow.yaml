@@ -26,21 +26,6 @@ on:
 
 jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Code formatting
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  format:
-    name: cargo fmt
-    runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: ${{ inputs.TOOLCHAIN_MAX }}
-          cache: false
-          components: rustfmt
-      - uses: actions-rust-lang/rustfmt@v1
-
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Code checks
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   checks:
@@ -57,6 +42,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
+          components: rustfmt clippy
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
@@ -64,14 +50,14 @@ jobs:
       - run: |
           pkgconf --path tss2-fapi
           pkgconf --cflags --libs tss2-fapi
-      - run: make check
+      - run: make clippy
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Examples
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   examples:
     name: cargo example
-    needs: [format, checks]
+    needs: checks
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
@@ -98,7 +84,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   tests-native:
     name: cargo test
-    needs: [format, checks]
+    needs: checks
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
@@ -125,7 +111,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   tests-docker:
     name: docker tests
-    needs: [format, checks]
+    needs: checks
     strategy:
       matrix:
         branch: ["stable", "unstable", "bleeding-edge"]
@@ -144,7 +130,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   benches:
     name: benchmarks
-    needs: [format, checks]
+    needs: checks
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
@@ -171,7 +157,7 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   codecov:
     name: codecov
-    needs: [format, checks]
+    needs: checks
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
