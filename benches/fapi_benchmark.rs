@@ -71,7 +71,7 @@ mod bench_fapi {
         let mut manager = TpmManager::new();
 
         // Create siging key
-        let sign_key_path = format!("{}/sign_key", &manager.1);
+        let sign_key_path = format!("{}/sign_key", manager.1);
         manager.0.create_key(&sign_key_path, Some(&FLAGS_SIGNING), None, None).expect("Failed to create sign key!");
 
         // Generate random message
@@ -96,7 +96,7 @@ mod bench_fapi {
         let mut manager = TpmManager::new();
 
         // Create siging key
-        let sign_key_path = format!("{}/sign_key", &manager.1);
+        let sign_key_path = format!("{}/sign_key", manager.1);
         manager.0.create_key(&sign_key_path, Some(&FLAGS_SIGNING), None, None).expect("Failed to create sign key!");
 
         // Generate random message

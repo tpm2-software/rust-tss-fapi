@@ -4,7 +4,7 @@ include tools/docker/docker.mk
 
 DOCKER := $(foreach target,$(DOCKER_TARGETS),docker.$(target))
 
-.PHONY: all bench build check clean clippy codecov docs examples fixup fmt libtpms package publish tests $(DOCKER)
+.PHONY: all bench build check clean clippy codecov docs examples fmt libtpms package publish tests upgrade $(DOCKER)
 
 all: clean check build
 
@@ -20,10 +20,9 @@ clippy: check
 	cargo clippy --no-default-features -- -D warnings
 	cargo clippy --all-features --all-targets -- -D warnings
 
-fixup: check
-	cargo upgrade && cargo update
-	cargo fmt --all
-	cargo clippy --all-features --all-targets
+upgrade:
+	cargo upgrade -i
+	cargo update
 
 tests:
 	CARGO_PROFILE_RELEASE_DEBUG=true RUST_BACKTRACE=1 RUST_LOG=info TSS2_LOG="all+none" \

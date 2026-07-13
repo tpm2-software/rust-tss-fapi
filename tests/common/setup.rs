@@ -99,7 +99,7 @@ impl<'a> TestConfiguration<'a> {
         let temp_path = Path::new(env!("CARGO_TARGET_TMPDIR"));
         debug!("Temp directory: \"{}\"", temp_path.to_str().unwrap());
 
-        let work_path = temp_path.join(format!("fapi-{}", &RANDOM_UUID_PREFIX));
+        let work_path = temp_path.join(format!("fapi-{}", RANDOM_UUID_PREFIX));
         debug!("Work directory: \"{}\"", work_path.to_str().unwrap());
 
         let conf_file = work_path.join("config.json");

@@ -459,7 +459,7 @@ impl CallbackManager {
     fn auth_cb(&self, object_path: &CStr, description: Option<&CStr>) -> Result<CbResult<CStringPointer>, CbError> {
         let mut lock = self.0.lock().unwrap();
         let param = AuthCbParam::new(object_path, description)?;
-        trace!("Callbacks::auth_cb({:?})", &param);
+        trace!("Callbacks::auth_cb({:?})", param);
         match lock.callbacks.auth_cb(param) {
             Ok(auth_value) => Ok(Ok(lock.temp.set_string(CStringHolder::try_from(auth_value).map_err(|_| CbError::InvalidValue)?))),
             Err(error) => Ok(Err(error)),
@@ -477,7 +477,7 @@ impl CallbackManager {
     ) -> Result<CbResult<RawSlice>, CbError> {
         let mut lock = self.0.lock().unwrap();
         let param = SignCbParam::new(object_path, description, public_key, key_hint, hash_algo, challenge)?;
-        trace!("Callbacks::sign_cb({:?})", &param);
+        trace!("Callbacks::sign_cb({:?})", param);
         match lock.callbacks.sign_cb(param) {
             Ok(signature) => Ok(Ok(lock.temp.set_data(CBinaryHolder::try_from(signature).map_err(|_| CbError::InvalidValue)?))),
             Err(error) => Ok(Err(error)),
@@ -487,7 +487,7 @@ impl CallbackManager {
     fn branch_cb(&self, object_path: &CStr, description: Option<&CStr>, branches: &[&CStr]) -> Result<CbResult<usize>, CbError> {
         let mut lock = self.0.lock().unwrap();
         let param = BranchCbParam::new(object_path, description, branches)?;
-        trace!("Callbacks::branch_cb({:?})", &param);
+        trace!("Callbacks::branch_cb({:?})", param);
         Ok(lock.callbacks.branch_cb(param).inspect(|&index| {
             assert!(index < branches.len(), "The chosen branch index #{} is out of range!", index);
         }))
@@ -496,7 +496,7 @@ impl CallbackManager {
     fn policy_action_cb(&self, object_path: &CStr, action: Option<&CStr>) -> Result<CbResult<()>, CbError> {
         let mut lock = self.0.lock().unwrap();
         let param = PolicyActionCbParam::new(object_path, action)?;
-        trace!("Callbacks::policy_action_cb({:?})", &param);
+        trace!("Callbacks::policy_action_cb({:?})", param);
         Ok(lock.callbacks.policy_action_cb(param))
     }
 }

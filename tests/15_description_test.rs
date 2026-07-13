@@ -109,7 +109,7 @@ fn test_get_description() {
         };
 
         // Verify
-        debug!("Description: {:?}", &recovered_descr);
+        debug!("Description: {:?}", recovered_descr);
         assert!(recovered_descr.expect("No description avialble!").trim()[..].eq(desciption.trim()))
     });
 }

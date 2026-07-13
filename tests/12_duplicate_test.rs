@@ -130,7 +130,7 @@ fn test_duplicate_key() {
         // Enumerate keys
         match context.list(crypt_key2) {
             Ok(mut list) => {
-                let duplicated_key = format!("{}/{}", &crypt_key2, child_key2).to_ascii_lowercase();
+                let duplicated_key = format!("{}/{}", crypt_key2, child_key2).to_ascii_lowercase();
                 assert!(list.drain(..).any(|entry| entry.to_ascii_lowercase().ends_with(&duplicated_key[..])));
             }
             Err(error) => panic!("Failed to enumerate the keys: {:?}", error),
