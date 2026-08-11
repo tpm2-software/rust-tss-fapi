@@ -17,7 +17,7 @@ on:
       OS_VERS_MAX:
         required: false
         type: string
-        default: "24.04"
+        default: "26.04"
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -33,7 +33,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
@@ -61,7 +61,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
@@ -88,7 +88,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
         architecture: [amd64, arm64]
         profile: [RSA2048SHA256, ECCP256SHA256]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
@@ -134,7 +134,7 @@ jobs:
     strategy:
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
@@ -194,7 +194,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: ["${{ inputs.OS_VERS_MIN }}", "${{ inputs.OS_VERS_MAX }}"]
-        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}", "nightly"]
+        rust: ["${{ inputs.TOOLCHAIN_MIN }}", "${{ inputs.TOOLCHAIN_MAX }}"]
         architecture: [amd64, arm64]
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
