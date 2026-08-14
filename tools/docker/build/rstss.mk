@@ -1,9 +1,9 @@
 ifeq ($(filter-out stable,$(RSTSS_BRANCH)),)
-  export IMAGE_VERSION_RSTSS := sha256:276c6d4e9510ede4a2e868e0158e7ae79b99393656f889670da8ce4dc44746e4
+  export IMAGE_VERSION_RSTSS := sha256:b9b15411399043381ffd6ed787d0085c6dfc9145bde69889bd6c5733a434a7e0
 else ifeq ($(RSTSS_BRANCH),unstable)
-  export IMAGE_VERSION_RSTSS := sha256:c8464bf6cb191194a226bef0e4d9fea90b6d51ba5b05417e01a3cf2e543c6228
+  export IMAGE_VERSION_RSTSS := sha256:ab8ae391b5a8c4e7641080a6e605c1156f0bc5346f528febdb978ffb5e12dfcc
 else ifeq ($(RSTSS_BRANCH),bleeding-edge)
-  export IMAGE_VERSION_RSTSS := sha256:58066d0ad1ab47fb4e60e52bfe90ea59f8a5bbb5c6c011e2e3523c2c6b1dfa63
+  export IMAGE_VERSION_RSTSS := sha256:06facd0a098b95dccc797a183bb553879c8d139ed17b86b8213ce3218e528d81
 else
   $(error Unsupport RSTSS_BRANCH branch "$(RSTSS_BRANCH)" specified!)
 endif

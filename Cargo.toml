@@ -21,7 +21,7 @@ log = "0.4.33"
 
 [build-dependencies]
 bindgen = "0.72.1"
-pkg-config = "0.3.33"
+pkg-config = "0.3.34"
 regex = "1.13.1"
 
 [dev-dependencies]
