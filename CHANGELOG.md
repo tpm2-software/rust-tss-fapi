@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [0.14.3] - 2026-08-14
+
+### Changed
+
+- GitHub CI/CD: Updated maximum Ubuntu version to be tested to `26.04`.
+- GitHub CI/CD: Updated Rust toolchain to version `1.97.1`.
+- Docker images used for testing/building have been updated to the latest versions.
+- Some dependencies have been updated to the latest version.
+
 ## [0.14.2] - 2026-07-13
 
 ### Fixed

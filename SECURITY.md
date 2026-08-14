@@ -6,7 +6,7 @@ Currently supported versions:
 
 | Version               | Supported |
 | --------------------- | --------- |
-| &GreaterEqual; 0.13.0 | &#x2705;  |
+| &GreaterEqual; 0.14.0 | &#x2705;  |
 | Older versions        | &#x274C;  |
 
 ## Security Reporting Guidelines
