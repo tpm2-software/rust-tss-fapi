@@ -38,16 +38,12 @@ jobs:
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
           components: rustfmt clippy
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: |
           pkgconf --path tss2-fapi
           pkgconf --cflags --libs tss2-fapi
@@ -67,15 +63,11 @@ jobs:
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: |
           cp -vr examples/data ~/my-fapi-config
           make docker.swtpm DETACH=1
@@ -96,15 +88,11 @@ jobs:
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: |
           make docker.swtpm DETACH=1
           make tests FAPI_RS_TEST_PROF=${{ matrix.profile }}
@@ -142,15 +130,11 @@ jobs:
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: |
           cp -vr examples/data ~/my-fapi-config
           make docker.swtpm DETACH=1
@@ -165,17 +149,13 @@ jobs:
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
           components: llvm-tools-preview
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: |
           make docker.swtpm DETACH=1
           make codecov RUST_LOG=info TSS2_LOG=all+none
@@ -204,15 +184,11 @@ jobs:
     runs-on: ubuntu-${{ matrix.architecture == 'arm64' && format('{0}-arm', matrix.platform) || matrix.platform }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: make build
       - run: cp -vf README.md LICENSE target/release/
       - run: |
@@ -237,15 +213,11 @@ jobs:
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: make docs
       - run: |
           cp -f docs/html/redir.html target/doc/index.html
@@ -263,15 +235,11 @@ jobs:
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: make package
       - uses: actions/upload-artifact@v7
         with:
@@ -333,15 +301,11 @@ jobs:
     runs-on: ubuntu-${{ inputs.OS_VERS_MAX }}
     steps:
       - uses: actions/checkout@v7
+      - run: sudo "${{ github.workspace }}/.github/workflows/bin/install_packges" pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ inputs.TOOLCHAIN_MAX }}
           cache: false
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends pkgconf libtss2-dev uuid-dev libjson-c-dev libcurl4-openssl-dev
-        env:
-          DEBIAN_FRONTEND: noninteractive
       - run: make publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
