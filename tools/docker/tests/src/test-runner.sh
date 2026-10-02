@@ -13,11 +13,13 @@ fi
 cargo version || true
 printf 'tss2-fapi: %s\n' "$(pkgconf --modversion tss2-fapi)" || true
 
+readonly MY_TARGET_DIR="$(mktemp --tmpdir="/var/tmp/rust" -d)"
+trap "rm -rf \"${MY_TARGET_DIR}\"" ERR
+
 function test_profile() {
 	echo "========================================================"
 	echo "Test profile: ${1}"
 	echo "========================================================"
-	local my_target="$(mktemp --tmpdir="/var/tmp/rust" -d)"
 	local test_opts="--test-threads=1"
 	if [[ -n "${TEST_INCL_IGNORED}" && "${TEST_INCL_IGNORED}" -gt 0 ]]; then
 		local test_opts="${test_opts} --include-ignored"
@@ -26,9 +28,8 @@ function test_profile() {
 		CARGO_PROFILE_RELEASE_DEBUG=true \
 		RUST_BACKTRACE=1 \
 		FAPI_RS_TEST_PROF="${1}" \
-		cargo test --release --tests --target-dir="${my_target}" ${FAPI_RS_TEST_NAME:-test} -- ${test_opts}
+		cargo test --release --tests --target-dir="${MY_TARGET_DIR}" ${FAPI_RS_TEST_NAME:-test} -- ${test_opts}
 	EOF
-	rm -rf "${my_target}"
 }
 
 for profile_name in "${@:-RSA2048SHA256}"; do
@@ -52,3 +53,5 @@ for profile_name in "${@:-RSA2048SHA256}"; do
 	fi
 	/opt/shutdown_swtpm "${SWTPM_CTRL_ADDR:-127.0.0.1}" "${SWTPM_CTRL_PORT:-2322}"
 done
+
+rm -rf "${MY_TARGET_DIR}"
