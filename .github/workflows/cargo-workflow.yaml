@@ -5,11 +5,11 @@ on:
       TOOLCHAIN_MIN:
         required: false
         type: string
-        default: "1.86.0"
+        default: "1.87.0"
       TOOLCHAIN_MAX:
         required: false
         type: string
-        default: "1.99.0"
+        default: "1.99.1"
       OS_VERS_MIN:
         required: false
         type: string
