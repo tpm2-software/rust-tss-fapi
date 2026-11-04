@@ -2,7 +2,7 @@
 name = "tss2-fapi-rs"
 version = "0.14.6"
 edition = "2024"
-rust-version = "1.86"
+rust-version = "1.87"
 description = "Provides a Rust interface to the TSS2.0 Feature API (FAPI)"
 license = "BSD-3-Clause"
 authors = ["Daniel Trick <daniel.trick@sit.fraunhofer.de>"]
@@ -17,7 +17,7 @@ full_locking = ["locking"]
 [dependencies]
 cfg-if = "1.0.5"
 json = "0.12.4"
-log = "0.4.34"
+log = "0.4.35"
 
 [build-dependencies]
 bindgen = "0.73.2"
@@ -36,7 +36,7 @@ p256 = "0.14.0"
 rand = "0.10.3"
 rand_chacha = "0.10.0"
 regex = "1.13.1"
-rsa = "=0.10.0-rc.18"
+rsa = "=0.10.0-rc.20"
 serial_test = "3.5.0"
 sha2 = "0.11.0"
 uuid = "1.26.1"
