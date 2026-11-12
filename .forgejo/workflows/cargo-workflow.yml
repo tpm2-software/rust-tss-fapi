@@ -10,16 +10,10 @@ jobs:
   check:
     runs-on: codeberg-small
     container:
-      image: danieltrick/rust-tss2-docker
+      image: danieltrick/rust-tss2-docker:r36
     steps:
-      - name: Install Node
-        run: |
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update -qq
-          apt-get install -y --no-install-recommends nodejs
-
       - name: Checkout
         uses: https://data.forgejo.org/actions/checkout@v7
 
-      - name: Perform Code Check
-        run: make check
+      - name: Check and Build
+        run: make
