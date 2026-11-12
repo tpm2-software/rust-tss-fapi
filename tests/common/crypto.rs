@@ -8,7 +8,7 @@ use p256::{
     PublicKey as EccPublicKey, SecretKey as EccPrivateKey,
     pkcs8::{DecodePrivateKey, DecodePublicKey},
 };
-use rsa::{RsaPrivateKey, RsaPublicKey};
+use rsa::{PrivateKey as RsaPrivateKey, PublicKey as RsaPublicKey};
 use tss2_fapi_rs::HashAlgorithm;
 
 // ==========================================================================
@@ -89,7 +89,7 @@ mod sig_rsa {
     use digest::{Digest, FixedOutputReset, Update};
     use rand::rng;
     use rsa::{
-        RsaPrivateKey,
+        PrivateKey as RsaPrivateKey,
         pss::{Signature as RsaSignature, SigningKey as RsaSigningKey},
         signature::{RandomizedDigestSigner as RsaRandomizedDigestSigner, SignatureEncoding},
     };
