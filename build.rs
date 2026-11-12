@@ -98,11 +98,11 @@ fn detect_tss2_library() -> Result<LibraryConfig, Error> {
     let env_library_path = env::var("TSS2_LIBRARY_PATH").map(PathBuf::from);
 
     // Shortcut if `TSS2_INCLUDE_PATH` and `TSS2_LIBRARY_PATH` are defined
-    if let Ok(include_path) = env_include_path {
-        if let Ok(library_path) = env_library_path {
-            let library_version = env::var("TSS2_LIBRARY_VERS").unwrap_or_else(|_| LIBRARY_MIN_VERSION.to_owned());
-            return Ok((vec![LIBRARY_NAME.to_owned()], vec![library_path], vec![include_path], library_version));
-        }
+    if let Ok(include_path) = env_include_path
+        && let Ok(library_path) = env_library_path
+    {
+        let library_version = env::var("TSS2_LIBRARY_VERS").unwrap_or_else(|_| LIBRARY_MIN_VERSION.to_owned());
+        return Ok((vec![LIBRARY_NAME.to_owned()], vec![library_path], vec![include_path], library_version));
     }
 
     // Link static TSS 2.0 library?

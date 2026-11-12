@@ -73,9 +73,9 @@ macro_rules! tpm_initialize {
 pub fn my_tpm_finalizer(password: &'static str) {
     log::debug!("Cleaning up the TPM now!");
     let callbacks = MyCallbacks::new(password, None);
-    if let Err(error) = tss2_fapi_rs::FapiContext::new().and_then(|mut fpai_ctx| fpai_ctx.set_callbacks(callbacks).and_then(|_| fpai_ctx.delete("/"))) {
-        if !matches!(error, tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::NotProvisioned)) {
-            log::error!("Failed to clean up TPM, take care! [{:?}]", error);
-        }
+    if let Err(error) = tss2_fapi_rs::FapiContext::new().and_then(|mut fpai_ctx| fpai_ctx.set_callbacks(callbacks).and_then(|_| fpai_ctx.delete("/")))
+        && !matches!(error, tss2_fapi_rs::ErrorCode::FapiError(tss2_fapi_rs::BaseErrorCode::NotProvisioned))
+    {
+        log::error!("Failed to clean up TPM, take care! [{:?}]", error);
     }
 }
