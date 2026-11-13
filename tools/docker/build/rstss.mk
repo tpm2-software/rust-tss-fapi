@@ -1,12 +1,12 @@
 ifeq ($(filter-out stable,$(RSTSS_BRANCH)),)
-  # danieltrick/rust-tss2-docker:r36
-  export IMAGE_VERSION_RSTSS := 834b8c4436f1fd51a1a7e81834ca598b1dbab959158dbb988ac07509902a9b51
+  # danieltrick/rust-tss2-docker:r37
+  export IMAGE_VERSION_RSTSS := 1dd5e2ee7dcd07b70aad244066860e291a57cc4828b5bdc868b3d51b01d5136a
 else ifeq ($(RSTSS_BRANCH),nightly)
-  # danieltrick/rust-tss2-docker:nightly-r1
-  export IMAGE_VERSION_RSTSS := 37d04eda3d7d9fe691a829ea562551b34816726e3a90e4303dc57c57a78ba84b
+  # danieltrick/rust-tss2-docker:nightly-r2
+  export IMAGE_VERSION_RSTSS := 1339368571df468a4855842adb8140e18bef91e9f21886268342e1efa8a61765
 else ifeq ($(RSTSS_BRANCH),snapshot)
-  # danieltrick/rust-tss2-docker:snapshot-r7
-  export IMAGE_VERSION_RSTSS := adf4e259bbe028be3a450564058e9d07c7fcd76832dce79e11ec14cfb757c2f9
+  # danieltrick/rust-tss2-docker:snapshot-r8
+  export IMAGE_VERSION_RSTSS := c5c17a6a1ee98c90777a22d9b859b1c40d3fb03dda78840a62013ce74a5be6ea
 else
   $(error Unsupport RSTSS_BRANCH branch "$(RSTSS_BRANCH)" specified!)
 endif

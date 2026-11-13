@@ -10,7 +10,7 @@ jobs:
   check:
     runs-on: codeberg-small
     container:
-      image: danieltrick/rust-tss2-docker:r36
+      image: danieltrick/rust-tss2-docker:r37
     steps:
       - name: Checkout
         uses: https://data.forgejo.org/actions/checkout@v7
